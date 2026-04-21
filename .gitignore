@@ -1,0 +1,11 @@
+node_modules/
+.env
+data/
+session/
+output/
+tmp_*
+server_test*
+*.log
+*.out
+*.err
+*.pid

@@ -1,0 +1,19 @@
+{
+  "name": "telegram-checker-all-in-one",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cleaner + Checker + Auto Queue in one web project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "csv-stringify": "^6.5.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1",
+    "telegram": "^2.26.8",
+    "xlsx": "^0.18.5"
+  }
+}
