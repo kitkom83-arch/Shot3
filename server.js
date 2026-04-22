@@ -169,6 +169,46 @@ function sanitizeFileName(name) {
   return String(name || "upload").replace(/[^a-zA-Z0-9._-]+/g, "_");
 }
 
+function fileStem(name) {
+  const base = String(name || "").trim();
+  if (!base) return "";
+  const ext = path.extname(base);
+  return ext ? base.slice(0, -ext.length) : base;
+}
+
+function normalizeJobLabel(inputLabel, fallbackFileName = "") {
+  const raw = String(inputLabel || "").trim();
+  if (raw) return raw.slice(0, 60);
+  const fallback = fileStem(fallbackFileName) || String(fallbackFileName || "").trim() || "งานไม่ระบุชื่อ";
+  return fallback.slice(0, 60);
+}
+
+function normalizeJobNote(note) {
+  return String(note || "").trim().slice(0, 200);
+}
+
+function buildAliasPool(group = "A", size = 8) {
+  const g = String(group || "A").trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "A";
+  const out = [];
+  for (let i = 1; i <= Math.max(1, Number(size || 8)); i += 1) out.push(`${g}${i}`);
+  return out;
+}
+
+function parseAliasGroupFromNote(jobNote = "") {
+  const text = String(jobNote || "");
+  const match = text.match(/(?:aliasSet|aliasGroup|pool)\s*[:=]\s*([A-Za-z0-9]+)/i);
+  return match ? String(match[1] || "").trim().toUpperCase() : "";
+}
+
+function deriveAliasGroup(jobLabel = "", jobNote = "") {
+  const fromNote = parseAliasGroupFromNote(jobNote);
+  if (fromNote) return fromNote;
+  const label = String(jobLabel || "").trim().toUpperCase();
+  if (label.startsWith("B")) return "B";
+  if (label.startsWith("C")) return "C";
+  return "A";
+}
+
 function makeId(prefix = "id") {
   return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
 }
@@ -963,9 +1003,14 @@ function dynamicRowsToCsv(rows, preferredColumns = []) {
   );
 }
 
-async function saveIntakeOutputs(filename, result) {
+async function saveIntakeOutputs(filename, result, options = {}) {
+  const jobLabel = normalizeJobLabel(options.jobLabel, filename);
+  const jobNote = normalizeJobNote(options.jobNote);
   const meta = {
+    fileName: filename,
     originalFilename: filename,
+    jobLabel,
+    jobNote,
     ...result.summary,
     files: {
       cleanReadyCsv: "clean_ready.csv",
@@ -994,6 +1039,8 @@ async function saveIntakeOutputs(filename, result) {
   await writeJson(FILES.intakeLatest, meta);
   await appendRunLog({
     type: "clean_summary",
+    fileName: meta.fileName || "",
+    jobLabel: meta.jobLabel || "",
     totalRows: meta.totalRows || 0,
     readyRows: meta.readyRows || 0,
     invalidRows: meta.invalidRows || 0,
@@ -1001,7 +1048,7 @@ async function saveIntakeOutputs(filename, result) {
     detectedPhoneColumn: meta.detectedPhoneColumn || "",
   });
   logInfo(
-    `Cleaner summary total=${meta.totalRows || 0} ready=${meta.readyRows || 0} invalid=${meta.invalidRows || 0} duplicate=${meta.duplicateRows || 0} phoneColumn=${meta.detectedPhoneColumn || "-"}`
+    `Cleaner summary label=${meta.jobLabel || "-"} total=${meta.totalRows || 0} ready=${meta.readyRows || 0} invalid=${meta.invalidRows || 0} duplicate=${meta.duplicateRows || 0} phoneColumn=${meta.detectedPhoneColumn || "-"}`
   );
   return meta;
 }
@@ -1018,24 +1065,35 @@ async function loadCleanRows() {
   }));
 }
 
-function buildContacts(rows) {
+function makeContactFirstName(jobLabel, alias, row) {
+  const label = normalizeJobLabel(jobLabel, row?.name || row?.rawPhone || row?.normalizedPhone || "");
+  const safeName = String(row?.name || "").trim() || String(row?.rawPhone || row?.normalizedPhone || "").trim() || `Contact ${row?.sourceIndex || ""}`;
+  const text = `${alias} [${label}] ${safeName}`.trim();
+  return text.slice(0, 64);
+}
+
+function buildContacts(rows, jobLabel = "", aliasPool = []) {
+  const pool = Array.isArray(aliasPool) && aliasPool.length ? aliasPool : buildAliasPool("A", 8);
   return rows.map((row, index) => {
     const clientId = BigInt(Date.now()) * 1000n + BigInt(index + 1);
+    const sourceIndex = Math.max(1, Number(row?.sourceIndex || index + 1));
+    const alias = pool[(sourceIndex - 1) % pool.length];
     return {
       ...row,
       clientId,
+      contactAlias: alias,
       contact: new Api.InputPhoneContact({
         clientId,
         phone: row.normalizedPhone,
-        firstName: row.name || `Contact ${row.sourceIndex}`,
+        firstName: makeContactFirstName(jobLabel, alias, row),
         lastName: "",
       }),
     };
   });
 }
 
-async function importBatch(client, batchRows) {
-  const contacts = buildContacts(batchRows);
+async function importBatch(client, batchRows, jobLabel = "", aliasPool = []) {
+  const contacts = buildContacts(batchRows, jobLabel, aliasPool);
   const result = await client.invoke(
     new Api.contacts.ImportContacts({
       contacts: contacts.map((item) => item.contact),
@@ -1226,19 +1284,26 @@ function buildAlerts(job, latestMeta, settings, runLog = [], notices = []) {
 }
 
 async function buildDashboardPayload() {
-  const [settings, job, latestMeta, runLog] = await Promise.all([
+  const [settings, job, latestMeta, runLog, accountsState] = await Promise.all([
     loadSettings(),
     getCurrentJob(),
     readLatestMeta(),
     readJson(FILES.runLog, []),
+    loadAccountsState(),
   ]);
+  const appState = accountsState?.appState || {};
 
   const remainingSec = computeRemainingSec(job?.nextRunAt);
   const progressPct = job?.totalRows ? Math.min(100, Math.round((Number(job.processedRows || 0) / Number(job.totalRows || 1)) * 100)) : 0;
   const runEvents = (Array.isArray(runLog) ? [...runLog] : []).slice(-15).reverse().map((entry) => ({
     at: entry.at || '',
     type: entry.type || 'event',
-    text: entry.message || entry.code || [entry.type, entry.batchNumber ? `รอบ ${entry.batchNumber}` : '', Number.isFinite(entry.seconds) ? `${entry.seconds} วิ` : ''].filter(Boolean).join(' • '),
+    text: entry.message || entry.code || [
+      entry.jobLabel ? `งาน ${entry.jobLabel}` : '',
+      entry.type,
+      entry.batchNumber ? `รอบ ${entry.batchNumber}` : '',
+      Number.isFinite(entry.seconds) ? `${entry.seconds} วิ` : '',
+    ].filter(Boolean).join(' • '),
   }));
   const noticeEvents = [...recoveryNotices].slice(-10).reverse().map((entry) => ({
     at: entry.at || '',
@@ -1267,11 +1332,13 @@ async function buildDashboardPayload() {
       floodWaitCount: Number(job?.floodWaitCount || 0),
       progressPct,
       account: job?.lockedAccountLabel || '-',
+      jobLabel: job?.jobLabel || '-',
       queueStatus: displayQueueStatus(job?.status),
     },
     alerts: buildAlerts(job, latestMeta, settings, runLog, recoveryNotices),
     events,
     recovery: [...recoveryNotices].slice(-10).reverse(),
+    lastJob: buildJobSnapshot(job) || appState.lastJobMeta || null,
   };
 }
 
@@ -1289,6 +1356,9 @@ async function buildAutoState(job) {
     lockedAccountLabel: job?.lockedAccountLabel || "",
     lockedAccountPhone: job?.lockedAccountPhone || "",
     file: job?.sourceFile || "",
+    fileName: job?.fileName || job?.sourceFile || "",
+    jobLabel: job?.jobLabel || "",
+    jobNote: job?.jobNote || "",
     floodWaitSec: displayQueueStatus(job?.status) === "WAITING_FLOOD" ? remainingSec : (job?.lastFloodWaitSec || 0),
     floodWaitCount: Number(job?.floodWaitCount || 0),
     retryRatio: job?.lastRetryRatio || 0,
@@ -1310,6 +1380,10 @@ async function getCurrentJob() {
 
   const normalized = {
     ...job,
+    fileName: job.fileName || job.sourceFile || "",
+    jobLabel: normalizeJobLabel(job.jobLabel, job.fileName || job.sourceFile || ""),
+    jobNote: normalizeJobNote(job.jobNote),
+    selectedAccountId: job.selectedAccountId || job.lockedAccountId || "",
     status: job.status || "paused",
     autoStatus: job.autoStatus || (job.status === "completed" ? "OFF" : "PAUSED"),
     floodWaitCount: Number(job.floodWaitCount || 0),
@@ -1326,11 +1400,36 @@ async function getCurrentJob() {
   return normalized;
 }
 
+function buildJobSnapshot(job) {
+  if (!job) return null;
+  return {
+    jobId: job.id || "",
+    fileName: job.fileName || job.sourceFile || "",
+    jobLabel: job.jobLabel || job.sourceFile || "",
+    jobNote: job.jobNote || "",
+    aliasGroup: job.aliasGroup || "A",
+    createdAt: job.createdAt || "",
+    selectedAccountId: job.selectedAccountId || job.lockedAccountId || "",
+    selectedAccountLabel: job.lockedAccountLabel || "",
+    total: Number(job.totalRows || 0),
+    processed: Number(job.processedRows || 0),
+    remaining: Number(job.remainingRows || 0),
+    status: job.status || "",
+    autoStatus: job.autoStatus || "",
+    updatedAt: nowIso(),
+  };
+}
+
 async function saveCurrentJob(job) {
   await writeJson(FILES.currentJob, job);
   await writeJson(FILES.jobState, job);
   await writeJson(FILES.autoState, await buildAutoState(job));
   await writeRemainingCsv(job).catch(() => {});
+  try {
+    const { accounts, appState } = await loadAccountsState();
+    appState.lastJobMeta = buildJobSnapshot(job);
+    await saveAccountsState(accounts, appState);
+  } catch {}
   return job;
 }
 
@@ -1360,14 +1459,26 @@ async function createJobFromLatestClean() {
   if (!cleanRows.length) throw new Error("ยังไม่มี clean_ready.csv กรุณาล้างไฟล์ก่อน");
   const selectedAccount = await getSelectedAccount(true);
   const settings = await loadSettings();
+  const intakeLatest = await readJson(FILES.intakeLatest, null);
+  const fileName = intakeLatest?.fileName || intakeLatest?.originalFilename || "clean_ready.csv";
+  const jobLabel = normalizeJobLabel(intakeLatest?.jobLabel, fileName);
+  const jobNote = normalizeJobNote(intakeLatest?.jobNote);
+  const aliasGroup = deriveAliasGroup(jobLabel, jobNote);
+  const aliasPool = buildAliasPool(aliasGroup, 8);
 
   const job = {
     id: makeId("job"),
     sourceFile: "clean_ready.csv",
+    fileName,
+    jobLabel,
+    jobNote,
+    aliasGroup,
+    aliasPool,
     totalRows: cleanRows.length,
     nextIndex: 0,
     processedRows: 0,
     remainingRows: cleanRows.length,
+    selectedAccountId: selectedAccount.id,
     lockedAccountId: selectedAccount.id,
     lockedAccountLabel: selectedAccount.label,
     lockedAccountPhone: selectedAccount.phone,
@@ -1403,7 +1514,13 @@ async function createJobFromLatestClean() {
   await saveCurrentJob(job);
   await unlinkIfExists(FILES.latestJson);
   await unlinkIfExists(FILES.latestCsv);
-  await appendRunLog({ type: "job_created", jobId: job.id, lockedAccount: job.lockedAccountLabel });
+  await appendRunLog({
+    type: "job_created",
+    jobId: job.id,
+    jobLabel: job.jobLabel,
+    fileName: job.fileName,
+    lockedAccount: job.lockedAccountLabel,
+  });
 
   return job;
 }
@@ -1437,9 +1554,12 @@ async function processNextBatch() {
   const currentBatchRows = [];
   let importedCount = 0;
   let batchRetryCount = 0;
+  const aliasPool = Array.isArray(job.aliasPool) && job.aliasPool.length
+    ? job.aliasPool
+    : buildAliasPool(deriveAliasGroup(job.jobLabel, job.jobNote), 8);
 
   for (const chunk of chunks) {
-    const result = await importBatch(client, chunk);
+    const result = await importBatch(client, chunk, job.jobLabel || job.sourceFile || "งาน", aliasPool);
     currentBatchRows.push(...result.rows);
     importedCount += result.importedCount;
     batchRetryCount += result.rows.filter((row) => row.status === "RETRY").length;
@@ -1496,6 +1616,11 @@ async function processNextBatch() {
   const latestPayload = {
     meta: {
       sourceFile: nextJob.sourceFile,
+      fileName: nextJob.fileName || nextJob.sourceFile,
+      jobLabel: nextJob.jobLabel || nextJob.sourceFile,
+      jobNote: nextJob.jobNote || "",
+      aliasGroup: nextJob.aliasGroup || "A",
+      aliasPool: Array.isArray(nextJob.aliasPool) ? nextJob.aliasPool : buildAliasPool(nextJob.aliasGroup || "A", 8),
       batchNumber,
       batchStart: start + 1,
       batchEnd: end,
@@ -1530,6 +1655,8 @@ async function processNextBatch() {
   await appendRunLog({
     type: "batch_done",
     jobId: job.id,
+    jobLabel: nextJob.jobLabel || "",
+    fileName: nextJob.fileName || "",
     batchNumber,
     matchedCount,
     unmatchedCount,
@@ -1641,10 +1768,10 @@ async function parseInputRowsFromFile(filePath, originalName = "") {
   return parseWorkbookRows(filePath); // Excel/ODS: read first sheet only
 }
 
-async function processIntakeFile(filePath, originalName = "") {
+async function processIntakeFile(filePath, originalName = "", options = {}) {
   const rows = await parseInputRowsFromFile(filePath, originalName);
   const result = normalizeInputRows(rows);
-  const meta = await saveIntakeOutputs(originalName || path.basename(filePath), result);
+  const meta = await saveIntakeOutputs(originalName || path.basename(filePath), result, options);
   return { meta, result };
 }
 
@@ -1782,6 +1909,9 @@ app.get("/api/auto-status", async (_req, res) => {
     lockedAccountLabel: job?.lockedAccountLabel || "",
     lockedAccountPhone: job?.lockedAccountPhone || "",
     file: job?.sourceFile || "",
+    fileName: job?.fileName || job?.sourceFile || "",
+    jobLabel: job?.jobLabel || "",
+    jobNote: job?.jobNote || "",
     floodWaitSec: job?.lastFloodWaitSec || 0,
     floodWaitCount: Number(job?.floodWaitCount || 0),
     retryRatio: job?.lastRetryRatio || 0,
@@ -2111,7 +2241,10 @@ app.delete("/api/accounts/:id", async (req, res) => {
 app.post("/api/intake/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) throw new Error("กรุณาอัปโหลดไฟล์ก่อน");
-    const { meta } = await processIntakeFile(req.file.path, req.file.originalname);
+    const { meta } = await processIntakeFile(req.file.path, req.file.originalname, {
+      jobLabel: req.body?.jobLabel,
+      jobNote: req.body?.jobNote,
+    });
     res.json({ ok: true, message: "ล้างไฟล์เรียบร้อย", summary: meta, preview: meta.preview || [] });
   } catch (error) {
     res.status(400).json({ error: error.message || "ล้างไฟล์ไม่สำเร็จ" });
@@ -2126,7 +2259,10 @@ app.post("/api/intake/import-from-path", async (req, res) => {
     if (!fs.existsSync(resolved)) throw new Error("ไม่พบไฟล์ตาม path ที่ระบุ");
     const ext = path.extname(resolved).toLowerCase();
     if (!isSupportedIntakeExt(ext)) throw new Error("รองรับเฉพาะ csv, txt, xlsx, xls, xlsm, xlsb, ods");
-    const { meta } = await processIntakeFile(resolved, path.basename(resolved));
+    const { meta } = await processIntakeFile(resolved, path.basename(resolved), {
+      jobLabel: req.body?.jobLabel,
+      jobNote: req.body?.jobNote,
+    });
     res.json({ ok: true, message: "นำเข้าไฟล์จาก path สำเร็จ", source: resolved, summary: meta, preview: meta.preview || [] });
   } catch (error) {
     res.status(400).json({ error: error.message || "นำเข้าไฟล์จาก path ไม่สำเร็จ" });

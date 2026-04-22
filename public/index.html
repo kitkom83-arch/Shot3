@@ -383,6 +383,16 @@
               <input id="intakeFile" type="file" accept=".csv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods" required />
             </div>
           </div>
+          <div class="row" style="margin-top:12px;">
+            <div>
+              <label>ชื่องาน (jobLabel)</label>
+              <input id="jobLabelInput" placeholder="เช่น 2026-04-Campaign-A (ถ้าไม่ใส่จะใช้ชื่อไฟล์)" />
+            </div>
+            <div>
+              <label>หมายเหตุงาน (jobNote)</label>
+              <input id="jobNoteInput" placeholder="ไม่บังคับ" />
+            </div>
+          </div>
           <div class="action-stack">
             <button type="submit">ล้างไฟล์พร้อมใช้</button>
           </div>
@@ -404,6 +414,7 @@
             <p class="section-subtitle">สร้างคิวจาก clean_ready.csv แล้วค่อยทำรอบถัดไป</p>
           </div>
         </div>
+        <div id="latestWork" class="status" style="margin-bottom:12px;">ยังไม่มีงานล่าสุด/งานค้าง</div>
         <div id="jobStatus" class="status">ยังไม่มีคิวงาน</div>
         <div class="action-stack">
           <button id="runNextBtn" type="button">ทำต่อรอบถัดไป</button>
@@ -611,6 +622,7 @@
     const intakeSummaryEl = document.getElementById("intakeSummary");
     const accountStatusEl = document.getElementById("accountStatus");
     const pendingInfoEl = document.getElementById("pendingInfo");
+    const latestWorkEl = document.getElementById("latestWork");
     const jobStatusEl = document.getElementById("jobStatus");
     const summaryEl = document.getElementById("summary");
     const resultsBody = document.getElementById("resultsBody");
@@ -788,6 +800,8 @@
 
       const job = data.job || {};
       reportBoardEl.textContent = [
+        `ชื่องาน: ${job.jobLabel || '-'}`,
+        `ไฟล์จริง: ${job.fileName || job.sourceFile || '-'}`,
         `คิว: ${job.sourceFile || '-'}`,
         `สถานะคิว: ${job.displayStatus || '-'}`,
         `Auto: ${job.displayAutoStatus || '-'}`,
@@ -798,6 +812,18 @@
         `ช่วงล่าสุด: ${job.lastBatchStart || 0} - ${job.lastBatchEnd || 0}`,
         `เวลารอบถัดไป: ${job.nextRunAt ? formatDateTime(job.nextRunAt) : '-'}`,
         `retry ratio ล่าสุด: ${Number(job.lastRetryRatio || 0).toFixed(2)}`
+      ].join('\n');
+
+      const lastJob = data.lastJob || {};
+      latestWorkEl.textContent = [
+        `งานล่าสุด: ${lastJob.jobLabel || '-'}`,
+        `ไฟล์: ${lastJob.fileName || '-'}`,
+        `บัญชี: ${lastJob.selectedAccountLabel || '-'}`,
+        `สถานะ: ${lastJob.status || '-'}`,
+        `ทำแล้ว: ${lastJob.processed || 0}/${lastJob.total || 0}`,
+        `เหลือ: ${lastJob.remaining || 0}`,
+        `สร้างเมื่อ: ${lastJob.createdAt ? formatDateTime(lastJob.createdAt) : '-'}`,
+        `อัปเดตล่าสุด: ${lastJob.updatedAt ? formatDateTime(lastJob.updatedAt) : '-'}`
       ].join('\n');
 
       liveNotesEl.textContent = [
@@ -902,6 +928,8 @@
       setStatus(autoStatusEl, [
         `Auto: ${data.status || "OFF"}`,
         `สถานะคิว: ${queueStatus || "-"}`,
+        `ชื่องาน: ${data.jobLabel || "-"}`,
+        `ไฟล์จริง: ${data.fileName || data.file || "-"}`,
         `ไฟล์: ${data.file || "-"}`,
         `บัญชีที่ล็อกกับคิว: ${data.lockedAccountLabel || "-"} ${data.lockedAccountPhone ? `(${data.lockedAccountPhone})` : ""}`,
         `ทำแล้ว: ${data.processedRows || 0}`,
@@ -914,6 +942,8 @@
 
     function renderIntakeSummary(data) {
       setStatus(intakeSummaryEl, [
+        `ชื่องาน: ${data.jobLabel || "-"}`,
+        `หมายเหตุ: ${data.jobNote || "-"}`,
         `ไฟล์ต้นทาง: ${data.originalFilename || "-"}`,
         `พร้อมใช้: ${data.readyRows || 0}`,
         `แถวเสีย: ${data.invalidRows || 0}`,
@@ -930,6 +960,9 @@
         return;
       }
       setStatus(jobStatusEl, [
+        `ชื่องาน: ${job.jobLabel || "-"}`,
+        `หมายเหตุ: ${job.jobNote || "-"}`,
+        `ไฟล์จริง: ${job.fileName || job.sourceFile || "-"}`,
         `ไฟล์: ${job.sourceFile || "-"}`,
         `บัญชีที่ล็อกกับคิวนี้: ${job.lockedAccountLabel || "-"} ${job.lockedAccountPhone ? `(${job.lockedAccountPhone})` : ""}`,
         `ทั้งหมด: ${job.totalRows || 0}`,
@@ -955,6 +988,9 @@
       }
       const meta = latest.meta;
       setStatus(summaryEl, [
+        `ชื่องาน: ${meta.jobLabel || "-"}`,
+        `หมายเหตุ: ${meta.jobNote || "-"}`,
+        `ไฟล์จริง: ${meta.fileName || meta.sourceFile || "-"}`,
         `ไฟล์: ${meta.sourceFile || "-"}`,
         `บัญชีที่ใช้รอบนี้: ${meta.accountLabel || "-"} (${meta.accountPhone || "-"})`,
         `รอบที่: ${meta.batchNumber || 0}`,
@@ -1161,6 +1197,8 @@
       }
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("jobLabel", document.getElementById("jobLabelInput").value || "");
+      formData.append("jobNote", document.getElementById("jobNoteInput").value || "");
       setStatus(intakeStatusEl, "กำลังล้างไฟล์...", "warn");
       try {
         const data = await fetchJson("/api/intake/upload", { method: "POST", body: formData });
