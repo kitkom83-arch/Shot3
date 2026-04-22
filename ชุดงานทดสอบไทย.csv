@@ -1,0 +1,21 @@
+Name,Telephone,Note
+Alice,0812345678,raw10
+Bob,08-1234-5678,dash
+Cara,081 234 5678,space
+Dan,+66812345678,plus66
+Eve,66812345678,66prefix
+Fay,(081)2345678,parentheses
+Gail,081.234.5678,dot
+Hank,0899999999,valid
+Ivy,0961112222,valid
+Jay,0623334444,valid
+Kim,0845556666,valid
+Leo,0917778888,valid
+Mia,0838887777,valid
+Ned,0950001111,valid
+Oat,0991234567,valid
+Pam,0822221111,valid
+Qin,0634445555,valid
+Ray,0866667777,valid
+Sue,0877776666,valid
+Tom,abcde,invalid

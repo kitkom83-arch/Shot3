@@ -394,7 +394,7 @@
             </div>
           </div>
           <div class="action-stack">
-            <button type="submit">ล้างไฟล์พร้อมใช้</button>
+            <button type="submit">อัปโหลดไฟล์</button>
           </div>
         </form>
         <div id="intakeStatus" class="status" style="margin-top:12px;">พร้อมรับไฟล์</div>
@@ -417,10 +417,10 @@
         <div id="latestWork" class="status" style="margin-bottom:12px;">ยังไม่มีงานล่าสุด/งานค้าง</div>
         <div id="jobStatus" class="status">ยังไม่มีคิวงาน</div>
         <div class="action-stack">
-          <button id="runNextBtn" type="button">ทำต่อรอบถัดไป</button>
-          <button id="createJobBtn" class="info" type="button">สร้างคิวจาก clean_ready.csv</button>
+          <button id="createJobBtn" type="button">เริ่มตรวจ</button>
+          <button id="runNextBtn" class="info" type="button">ทำต่อจากค้าง</button>
           <button id="refreshJobBtn" class="ghost" type="button">รีเฟรชสถานะ</button>
-          <button id="resetJobBtn" class="danger" type="button">ล้างคิว</button>
+          <button id="resetJobBtn" class="danger" type="button">เริ่มใหม่ทั้งหมด</button>
         </div>
       </section>
 
@@ -479,7 +479,7 @@
               <div class="action-stack">
                 <button type="submit">บันทึกค่า</button>
                 <button id="startAutoBtn" class="info" type="button">เริ่มออโต้</button>
-                <button id="pauseAutoBtn" class="ghost" type="button">พักออโต้</button>
+                <button id="pauseAutoBtn" class="ghost" type="button">หยุดชั่วคราว</button>
                 <button id="resumeAutoBtn" class="ghost" type="button">ทำต่อออโต้</button>
                 <button id="resetFloodBtn" class="ghost" type="button">รีเซ็ต Flood State</button>
               </div>
@@ -502,14 +502,14 @@
         <div id="summary" class="status">ยังไม่มีผลล่าสุด</div>
 
         <div class="downloads-grid">
-          <a class="btn ghost" href="/download/telegram_matches.csv" target="_blank">โหลดผลล่าสุด CSV</a>
-          <a class="btn ghost" href="/download/telegram_matches_all.csv" target="_blank">โหลดผลรวม CSV</a>
-          <a class="btn ghost" href="/download/telegram_matches.json" target="_blank">โหลดผลล่าสุด JSON</a>
-          <a class="btn ghost" href="/download/telegram_matches_all.json" target="_blank">โหลดผลรวม JSON</a>
-          <a class="btn ghost" href="/download/retry_rows.csv" target="_blank">โหลด retry_rows.csv</a>
-          <a class="btn ghost" href="/download/remaining_only.csv" target="_blank">โหลด remaining_only.csv</a>
-          <a class="btn ghost" href="/download/run_log.json" target="_blank">โหลด run_log.json</a>
-          <a class="btn ghost" href="/download/job_state.json" target="_blank">โหลดสถานะคิว</a>
+          <button id="downloadProcessedCsvBtn" class="info" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (CSV)</button>
+          <button id="downloadProcessedXlsxBtn" class="ghost" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (XLSX)</button>
+          <button id="downloadRemainingCsvBtn" class="info" type="button">ดาวน์โหลดไฟล์ที่เหลือ (CSV)</button>
+          <button id="downloadRemainingXlsxBtn" class="ghost" type="button">ดาวน์โหลดไฟล์ที่เหลือ (XLSX)</button>
+          <button id="downloadRunLogBtn" class="ghost" type="button">ดาวน์โหลดบันทึกการทำงาน</button>
+          <a class="btn ghost" href="/download/telegram_matches.csv" target="_blank">ผลล่าสุด CSV</a>
+          <a class="btn ghost" href="/download/telegram_matches_all.csv" target="_blank">ผลรวม CSV</a>
+          <a class="btn ghost" href="/download/retry_rows.csv" target="_blank">retry_rows.csv</a>
         </div>
 
         <div class="table-shell" style="margin-top:12px;">
@@ -640,6 +640,11 @@
     const resumeAutoBtnEl = document.getElementById("resumeAutoBtn");
     const startAutoBtnEl = document.getElementById("startAutoBtn");
     const resetFloodBtnEl = document.getElementById("resetFloodBtn");
+    const downloadProcessedCsvBtnEl = document.getElementById("downloadProcessedCsvBtn");
+    const downloadProcessedXlsxBtnEl = document.getElementById("downloadProcessedXlsxBtn");
+    const downloadRemainingCsvBtnEl = document.getElementById("downloadRemainingCsvBtn");
+    const downloadRemainingXlsxBtnEl = document.getElementById("downloadRemainingXlsxBtn");
+    const downloadRunLogBtnEl = document.getElementById("downloadRunLogBtn");
 
 
     const helpFabEl = document.getElementById("helpFab");
@@ -706,6 +711,33 @@
       return dt.toLocaleString('th-TH');
     }
 
+    function toThaiStatus(status) {
+      const key = String(status || '').toUpperCase();
+      if (key === 'READY') return 'พร้อมเริ่ม';
+      if (key === 'RUNNING') return 'กำลังทำงาน';
+      if (key === 'WAITING_RETRY' || key === 'WAITING_RETRY_COOLDOWN') return 'พักรอลองใหม่';
+      if (key === 'COMPLETED' || key === 'DONE') return 'เสร็จสิ้น';
+      if (key === 'ERROR') return 'เกิดข้อผิดพลาด';
+      if (key === 'PAUSED') return 'หยุดชั่วคราว';
+      if (key === 'WAITING_FLOOD') return 'รอ FloodWait';
+      if (key === 'PAUSED_FLOOD_STALE') return 'หยุดชั่วคราว (Flood ค้าง)';
+      return status || '-';
+    }
+
+    function setDownloadButtons(downloads = {}) {
+      const toggle = (el, enabled) => {
+        if (!el) return;
+        el.disabled = !enabled;
+        el.title = enabled ? '' : 'ไฟล์ยังไม่พร้อมดาวน์โหลด';
+      };
+      toggle(downloadProcessedCsvBtnEl, Boolean(downloads.processedCsv));
+      toggle(downloadProcessedXlsxBtnEl, Boolean(downloads.processedXlsx));
+      toggle(downloadRemainingCsvBtnEl, Boolean(downloads.remainingCsv));
+      toggle(downloadRemainingXlsxBtnEl, Boolean(downloads.remainingXlsx));
+      toggle(downloadRunLogBtnEl, Boolean(downloads.runLog));
+    }
+    setDownloadButtons({});
+
     function renderAlerts(alerts) {
       if (!alerts || !alerts.length) {
         alertPanelEl.innerHTML = '<div class="alert-box info"><div class="alert-title">ไม่มี alert</div><div>ระบบยังไม่ส่งข้อความเตือนในตอนนี้</div></div>';
@@ -726,7 +758,7 @@
         { label: 'YES', value: cards?.yes ?? 0, sub: 'เจอ Telegram' },
         { label: 'NO', value: cards?.no ?? 0, sub: 'ไม่เจอ' },
         { label: 'RETRY', value: cards?.retry ?? 0, sub: 'รอลองใหม่' },
-        { label: 'สถานะ', value: cards?.queueStatus || '-', sub: `บัญชี ${cards?.account || '-'}` },
+        { label: 'สถานะ', value: toThaiStatus(cards?.queueStatus || '-'), sub: `บัญชี ${cards?.account || '-'}` },
       ];
       liveCardsEl.innerHTML = items.map((item) => `
         <div class="metric-card">
@@ -803,8 +835,8 @@
         `ชื่องาน: ${job.jobLabel || '-'}`,
         `ไฟล์จริง: ${job.fileName || job.sourceFile || '-'}`,
         `คิว: ${job.sourceFile || '-'}`,
-        `สถานะคิว: ${job.displayStatus || '-'}`,
-        `Auto: ${job.displayAutoStatus || '-'}`,
+        `สถานะคิว: ${toThaiStatus(job.displayStatus || '-')}`,
+        `Auto: ${toThaiStatus(job.displayAutoStatus || '-')}`,
         `บัญชี: ${job.lockedAccountLabel || '-'} ${job.lockedAccountPhone ? `(${job.lockedAccountPhone})` : ''}`,
         `ทำแล้ว: ${job.processedRows || 0}`,
         `เหลือ: ${job.remainingRows || 0}`,
@@ -813,6 +845,7 @@
         `เวลารอบถัดไป: ${job.nextRunAt ? formatDateTime(job.nextRunAt) : '-'}`,
         `retry ratio ล่าสุด: ${Number(job.lastRetryRatio || 0).toFixed(2)}`
       ].join('\n');
+      setDownloadButtons(data.downloads || {});
 
       const lastJob = data.lastJob || {};
       latestWorkEl.textContent = [
@@ -926,8 +959,8 @@
       startAutoBtnEl.disabled = requiresFloodReset;
       resetFloodBtnEl.disabled = !requiresFloodReset;
       setStatus(autoStatusEl, [
-        `Auto: ${data.status || "OFF"}`,
-        `สถานะคิว: ${queueStatus || "-"}`,
+        `Auto: ${toThaiStatus(data.status || "OFF")}`,
+        `สถานะคิว: ${toThaiStatus(queueStatus || "-")}`,
         `ชื่องาน: ${data.jobLabel || "-"}`,
         `ไฟล์จริง: ${data.fileName || data.file || "-"}`,
         `ไฟล์: ${data.file || "-"}`,
@@ -975,8 +1008,8 @@
         `เจอสะสม: ${job.matchedCountTotal || 0}`,
         `ไม่เจอสะสม: ${job.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${job.retryCountTotal || 0}`,
-        `สถานะคิว: ${job.status || "-"}`,
-        `Auto: ${job.autoStatus || "OFF"}`,
+        `สถานะคิว: ${toThaiStatus(job.status || "-")}`,
+        `Auto: ${toThaiStatus(job.autoStatus || "OFF")}`,
         `ถัดไป: ${job.nextRunAt || "-"}`
       ].join("\n"));
     }
@@ -1004,7 +1037,7 @@
         `เจอสะสม: ${meta.matchedCountTotal || 0}`,
         `ไม่เจอสะสม: ${meta.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${meta.retryCountTotal || 0}`,
-        `Auto: ${meta.autoStatus || "OFF"}`,
+        `Auto: ${toThaiStatus(meta.autoStatus || "OFF")}`,
         `เวลารอบถัดไป: ${meta.nextRunAt || "-"}`,
         `เวลาสร้างผล: ${meta.generatedAt || "-"}`
       ].join("\n"));
@@ -1353,6 +1386,22 @@
         setStatus(summaryEl, error.message || "ทำรอบถัดไปไม่สำเร็จ", "bad");
         await refreshAll();
       }
+    });
+
+    downloadProcessedCsvBtnEl?.addEventListener("click", () => {
+      window.open("/download/processed.csv", "_blank");
+    });
+    downloadProcessedXlsxBtnEl?.addEventListener("click", () => {
+      window.open("/download/processed.xlsx", "_blank");
+    });
+    downloadRemainingCsvBtnEl?.addEventListener("click", () => {
+      window.open("/download/remaining.csv", "_blank");
+    });
+    downloadRemainingXlsxBtnEl?.addEventListener("click", () => {
+      window.open("/download/remaining.xlsx", "_blank");
+    });
+    downloadRunLogBtnEl?.addEventListener("click", () => {
+      window.open("/download/run-log", "_blank");
     });
 
     document.getElementById("refreshJobBtn").addEventListener("click", async () => {

@@ -65,10 +65,13 @@ const FILES = {
   latestCsv: path.join(OUTPUT_DIR, "telegram_matches.csv"),
   allJson: path.join(OUTPUT_DIR, "telegram_matches_all.json"),
   allCsv: path.join(OUTPUT_DIR, "telegram_matches_all.csv"),
+  processedCsv: path.join(OUTPUT_DIR, "processed_only.csv"),
+  processedXlsx: path.join(OUTPUT_DIR, "processed_only.xlsx"),
   retryCsv: path.join(OUTPUT_DIR, "retry_rows.csv"),
   autoState: path.join(OUTPUT_DIR, "auto_state.json"),
   runLog: path.join(LOG_DIR, "run_log.json"),
   remainingCsv: path.join(OUTPUT_DIR, "remaining_only.csv"),
+  remainingXlsx: path.join(OUTPUT_DIR, "remaining_only.xlsx"),
 };
 
 
@@ -167,6 +170,37 @@ function onlyDigits(value) {
 
 function sanitizeFileName(name) {
   return String(name || "upload").replace(/[^a-zA-Z0-9._-]+/g, "_");
+}
+
+function decodeUploadFileName(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return "upload";
+  try {
+    const decoded = Buffer.from(raw, "latin1").toString("utf8").trim();
+    if (!decoded) return raw;
+    const replacementRatio = (decoded.match(/\uFFFD/g) || []).length / Math.max(1, decoded.length);
+    return replacementRatio > 0.2 ? raw : decoded;
+  } catch {
+    return raw;
+  }
+}
+
+function toAsciiDownloadName(name, fallback = "download") {
+  const safe = sanitizeFileName(String(name || fallback));
+  return safe || `${fallback}.dat`;
+}
+
+function encodeRFC5987ValueChars(str) {
+  return encodeURIComponent(String(str || "download"))
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, "%2A");
+}
+
+function sendFileDownload(res, filePath, displayName) {
+  const asciiName = toAsciiDownloadName(displayName, path.basename(filePath));
+  const utf8Name = encodeRFC5987ValueChars(displayName || path.basename(filePath));
+  res.setHeader("Content-Disposition", `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
+  res.sendFile(path.resolve(filePath));
 }
 
 function fileStem(name) {
@@ -1182,6 +1216,34 @@ function rowsToCsv(rows) {
   );
 }
 
+function writeRowsToXlsx(filePath, rows, columns) {
+  const workbook = XLSX.utils.book_new();
+  const normalizedRows = (Array.isArray(rows) ? rows : []).map((row) => {
+    const out = {};
+    for (const c of columns) out[c] = row?.[c] ?? "";
+    return out;
+  });
+  const sheet = XLSX.utils.json_to_sheet(normalizedRows, { header: columns });
+  XLSX.utils.book_append_sheet(workbook, sheet, "data");
+  XLSX.writeFile(workbook, filePath);
+}
+
+const PROCESSED_COLUMNS = [
+  "sourceIndex",
+  "name",
+  "rawPhone",
+  "normalizedPhone",
+  "status",
+  "telegramUserId",
+  "telegramUsername",
+  "telegramFirstName",
+  "telegramLastName",
+  "telegramPhone",
+  "clientId",
+];
+
+const REMAINING_COLUMNS = ["name", "phone", "rawPhone", "rowNumber"];
+
 async function saveLatestOutputs(payload) {
   await writeJson(FILES.latestJson, payload);
   await fsp.writeFile(FILES.latestCsv, rowsToCsv(payload.rows || []), "utf8");
@@ -1189,9 +1251,24 @@ async function saveLatestOutputs(payload) {
 
 async function saveAllOutputs(rows) {
   await writeJson(FILES.allJson, rows || []);
-  await fsp.writeFile(FILES.allCsv, rowsToCsv(rows || []), "utf8");
+  const allRows = rows || [];
+  await fsp.writeFile(FILES.allCsv, rowsToCsv(allRows), "utf8");
+  await fsp.writeFile(FILES.processedCsv, rowsToCsv(allRows), "utf8");
+  writeRowsToXlsx(FILES.processedXlsx, allRows, PROCESSED_COLUMNS);
   const retryRows = (rows || []).filter((row) => row.status === "RETRY");
   await fsp.writeFile(FILES.retryCsv, rowsToCsv(retryRows), "utf8");
+}
+
+async function syncDerivedOutputFilesFromState() {
+  const allRows = await readJson(FILES.allJson, []);
+  if (Array.isArray(allRows)) {
+    await fsp.writeFile(FILES.processedCsv, rowsToCsv(allRows), "utf8");
+    writeRowsToXlsx(FILES.processedXlsx, allRows, PROCESSED_COLUMNS);
+    const retryRows = allRows.filter((row) => row.status === "RETRY");
+    await fsp.writeFile(FILES.retryCsv, rowsToCsv(retryRows), "utf8");
+  }
+  const current = await getCurrentJob();
+  await writeRemainingCsv(current).catch(() => {});
 }
 
 async function readLatestMeta() {
@@ -1207,11 +1284,18 @@ async function getProcessedSourceIndexSet() {
 async function writeRemainingCsv(job) {
   if (!job || !Array.isArray(job.rows)) {
     await unlinkIfExists(FILES.remainingCsv);
+    await unlinkIfExists(FILES.remainingXlsx);
     return [];
   }
   const doneSet = await getProcessedSourceIndexSet();
   const remainingRows = job.rows.filter((row) => !doneSet.has(String(row?.sourceIndex || '')));
   await fsp.writeFile(FILES.remainingCsv, cleanRowsToCsv(remainingRows), 'utf8');
+  writeRowsToXlsx(FILES.remainingXlsx, remainingRows.map((row) => ({
+    name: row.name,
+    phone: row.phone || row.normalizedPhone || "",
+    rawPhone: row.rawPhone || "",
+    rowNumber: row.rowNumber || row.sourceIndex || "",
+  })), REMAINING_COLUMNS);
   return remainingRows;
 }
 
@@ -1246,7 +1330,7 @@ function buildAlerts(job, latestMeta, settings, runLog = [], notices = []) {
       level: 'warning',
       code: 'WAITING_RETRY',
       title: 'กำลังพักก่อนลอง RETRY ใหม่',
-      message: `รออีก ${remainingSec} วินาที เพื่อให้ระบบวนกลับไปลองรายการ RETRY`
+      message: `รอบนี้พบรายการรอลองใหม่จำนวนมาก ระบบได้แยกไฟล์ที่ทำเสร็จแล้วและไฟล์ที่เหลือไว้ให้แล้ว (รออีก ${remainingSec} วินาที)`
     });
   }
 
@@ -1339,6 +1423,13 @@ async function buildDashboardPayload() {
     events,
     recovery: [...recoveryNotices].slice(-10).reverse(),
     lastJob: buildJobSnapshot(job) || appState.lastJobMeta || null,
+    downloads: {
+      processedCsv: fs.existsSync(FILES.processedCsv),
+      processedXlsx: fs.existsSync(FILES.processedXlsx),
+      remainingCsv: fs.existsSync(FILES.remainingCsv),
+      remainingXlsx: fs.existsSync(FILES.remainingXlsx),
+      runLog: fs.existsSync(FILES.runLog),
+    },
   };
 }
 
@@ -2230,7 +2321,8 @@ app.delete("/api/accounts/:id", async (req, res) => {
 app.post("/api/intake/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) throw new Error("กรุณาอัปโหลดไฟล์ก่อน");
-    const { meta } = await processIntakeFile(req.file.path, req.file.originalname, {
+    const displayName = decodeUploadFileName(req.file.originalname);
+    const { meta } = await processIntakeFile(req.file.path, displayName, {
       jobLabel: req.body?.jobLabel,
       jobNote: req.body?.jobNote,
     });
@@ -2488,9 +2580,12 @@ app.post("/api/reset-job", async (_req, res) => {
       FILES.latestCsv,
       FILES.allJson,
       FILES.allCsv,
+      FILES.processedCsv,
+      FILES.processedXlsx,
       FILES.retryCsv,
       FILES.autoState,
       FILES.remainingCsv,
+      FILES.remainingXlsx,
     ]) await unlinkIfExists(filePath);
     res.json({ ok: true, message: "ล้างคิวและผลลัพธ์เรียบร้อย" });
   } catch (error) {
@@ -2500,27 +2595,34 @@ app.post("/api/reset-job", async (_req, res) => {
 
 app.get("/download/:name", async (req, res) => {
   const allowed = new Map([
-    ["telegram_matches.csv", FILES.latestCsv],
-    ["telegram_matches.json", FILES.latestJson],
-    ["telegram_matches_all.csv", FILES.allCsv],
-    ["telegram_matches_all.json", FILES.allJson],
-    ["retry_rows.csv", FILES.retryCsv],
-    ["job_state.json", FILES.currentJob],
-    ["clean_ready.csv", FILES.cleanReadyCsv],
-    ["invalid_rows.csv", FILES.invalidRowsCsv],
-    ["duplicate_phones.csv", FILES.duplicatePhonesCsv],
-    ["clean_debug.csv", FILES.cleanDebugCsv],
-    ["clean_rejects.csv", FILES.cleanRejectsCsv],
-    ["summary.json", FILES.intakeSummaryJson],
-    ["run_log.json", FILES.runLog],
-    ["remaining_only.csv", FILES.remainingCsv],
+    ["telegram_matches.csv", { path: FILES.latestCsv, displayName: "telegram_matches.csv" }],
+    ["telegram_matches.json", { path: FILES.latestJson, displayName: "telegram_matches.json" }],
+    ["telegram_matches_all.csv", { path: FILES.allCsv, displayName: "telegram_matches_all.csv" }],
+    ["telegram_matches_all.json", { path: FILES.allJson, displayName: "telegram_matches_all.json" }],
+    ["retry_rows.csv", { path: FILES.retryCsv, displayName: "retry_rows.csv" }],
+    ["job_state.json", { path: FILES.currentJob, displayName: "job_state.json" }],
+    ["clean_ready.csv", { path: FILES.cleanReadyCsv, displayName: "clean_ready.csv" }],
+    ["invalid_rows.csv", { path: FILES.invalidRowsCsv, displayName: "invalid_rows.csv" }],
+    ["duplicate_phones.csv", { path: FILES.duplicatePhonesCsv, displayName: "duplicate_phones.csv" }],
+    ["clean_debug.csv", { path: FILES.cleanDebugCsv, displayName: "clean_debug.csv" }],
+    ["clean_rejects.csv", { path: FILES.cleanRejectsCsv, displayName: "clean_rejects.csv" }],
+    ["summary.json", { path: FILES.intakeSummaryJson, displayName: "summary.json" }],
+    ["run_log.json", { path: FILES.runLog, displayName: "run_log.json" }],
+    ["run-log", { path: FILES.runLog, displayName: "run_log.json" }],
+    ["processed.csv", { path: FILES.processedCsv, displayName: "processed_only.csv" }],
+    ["processed.xlsx", { path: FILES.processedXlsx, displayName: "processed_only.xlsx" }],
+    ["remaining.csv", { path: FILES.remainingCsv, displayName: "remaining_only.csv" }],
+    ["remaining.xlsx", { path: FILES.remainingXlsx, displayName: "remaining_only.xlsx" }],
+    ["remaining_only.csv", { path: FILES.remainingCsv, displayName: "remaining_only.csv" }],
+    ["remaining_only.xlsx", { path: FILES.remainingXlsx, displayName: "remaining_only.xlsx" }],
   ]);
 
   const requested = String(req.params.name || "");
   if (!allowed.has(requested)) return res.status(404).send("ไม่พบไฟล์");
-  const filePath = allowed.get(requested);
+  const target = allowed.get(requested);
+  const filePath = target.path;
   if (!fs.existsSync(filePath)) return res.status(404).send("ยังไม่มีไฟล์นี้");
-  res.download(filePath);
+  sendFileDownload(res, filePath, target.displayName);
 });
 
 app.use((error, _req, res, _next) => {
@@ -2613,6 +2715,7 @@ async function autoTick() {
   }, 5000);
 
   await markFloodStateStaleIfNeeded(await getCurrentJob());
+  await syncDerivedOutputFilesFromState().catch(() => {});
 
   app.listen(PORT, HOST, () => {
     logInfo(`Telegram All-in-One running on http://${HOST}:${PORT}`);
