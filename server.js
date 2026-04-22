@@ -1817,6 +1817,11 @@ async function splitCsvFile(filePath, rowsPerFile = 50000) {
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Public healthcheck for Railway/infra probes. Must never require auth.
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
   if (username !== APP_USER || password !== APP_PASSWORD) {
@@ -1853,22 +1858,6 @@ app.get("/", (req, res) => {
   return res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 app.use(express.static(PUBLIC_DIR, { index: false }));
-
-app.get("/api/health", async (_req, res) => {
-  const job = await getCurrentJob();
-  const accounts = await getAccounts();
-  const settings = await loadSettings();
-  res.json({
-    ok: true,
-    host: HOST,
-    port: PORT,
-    dataDir: DATA_DIR,
-    accounts,
-    job,
-    settings,
-    isProcessing,
-  });
-});
 
 app.get("/api/settings", async (_req, res) => {
   res.json(await loadSettings());
