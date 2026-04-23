@@ -903,7 +903,9 @@ function normalizeInputRows(rows) {
 
   rows.forEach((row, index) => {
     const rowNumber = Number(row.__rowNumber || index + 1);
-    const rawPhone = phoneColumn ? String(row[phoneColumn] || "").trim() : "";
+    const primaryPhone = phoneColumn ? String(row[phoneColumn] || "").trim() : "";
+    const fallbackRawPhone = String(row.rawPhone || row.raw_phone || row.rawphone || "").trim();
+    const rawPhone = primaryPhone || fallbackRawPhone;
     const normalizedResult = normalizeThaiPhoneDetailed(rawPhone);
     const normalizedPhone = normalizedResult.normalized;
     const nameRaw = nameColumn ? String(row[nameColumn] || "").trim() : "";
