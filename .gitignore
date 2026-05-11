@@ -4,6 +4,12 @@ data/
 session/
 output/
 tmp_*
+data_backups/
+data_before_restore*/
+tmp_smoke_runtime_*/
+.codex-smoke*.log
+*.stdout.log
+*.stderr.log
 server_test*
 *.log
 *.out
