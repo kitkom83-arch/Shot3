@@ -1350,9 +1350,10 @@ async function saveIntakeOutputs(filename, result, options = {}) {
   return meta;
 }
 
-async function loadCleanRows() {
-  if (!fs.existsSync(FILES.cleanReadyCsv)) return [];
-  const raw = await fsp.readFile(FILES.cleanReadyCsv, "utf8");
+async function loadCleanRows(systemId = currentSystemId()) {
+  const cleanReadyPath = getSystemPaths(systemId).files.cleanReadyCsv;
+  if (!fs.existsSync(cleanReadyPath)) return [];
+  const raw = await fsp.readFile(cleanReadyPath, "utf8");
   const rows = parseCsvSync(raw, { columns: true, skip_empty_lines: true, bom: true, trim: true });
   return rows.map((row, idx) => ({
     sourceIndex: idx + 1,
@@ -2071,9 +2072,35 @@ async function assertAccountPhoneNotRunningElsewhere(account) {
   throw new Error(`บัญชี Telegram เบอร์ ${account.phone} ถูกใช้อยู่ในระบบ ${usage.systemId} (${usage.status}/${usage.autoStatus}) ห้ามรันพร้อมกันหลายระบบ`);
 }
 
-async function createJobFromLatestClean() {
-  const cleanRows = await loadCleanRows();
-  if (!cleanRows.length) throw new Error("ยังไม่มี clean_ready.csv กรุณาล้างไฟล์ก่อน");
+class MissingCleanReadyError extends Error {
+  constructor(details) {
+    super("ยังไม่มี clean_ready.csv กรุณาอัปโหลดไฟล์ก่อน");
+    this.name = "MissingCleanReadyError";
+    this.details = details;
+  }
+}
+
+async function getCleanReadyDebug(systemId = currentSystemId()) {
+  const id = normalizeSystemId(systemId) || DEFAULT_SYSTEM_ID;
+  const paths = getSystemPaths(id);
+  const [latestIntakeSummary, summaryFallback] = await Promise.all([
+    readJson(paths.files.intakeLatest, null),
+    readJson(paths.files.intakeSummaryJson, null),
+  ]);
+  return {
+    systemId: id,
+    expectedCleanReadyPath: paths.files.cleanReadyCsv,
+    existsCleanReady: fs.existsSync(paths.files.cleanReadyCsv),
+    latestIntakeSummary: latestIntakeSummary || summaryFallback || null,
+  };
+}
+
+async function createJobFromLatestClean(systemId = currentSystemId()) {
+  const id = normalizeSystemId(systemId) || DEFAULT_SYSTEM_ID;
+  const cleanReadyDebug = await getCleanReadyDebug(id);
+  if (!cleanReadyDebug.existsCleanReady) throw new MissingCleanReadyError(cleanReadyDebug);
+  const cleanRows = await loadCleanRows(id);
+  if (!cleanRows.length) throw new Error("clean_ready.csv ไม่มีข้อมูลพร้อมใช้");
   const selectedAccount = await getSelectedAccount(true);
   await assertAccountPhoneNotRunningElsewhere(selectedAccount);
   const settings = await loadSettings();
@@ -3858,13 +3885,19 @@ app.get("/api/systems/:systemId/intake/latest", async (_req, res) => {
   res.json(latest);
 });
 
-app.post("/api/systems/:systemId/job/create", async (_req, res) => {
+app.post("/api/systems/:systemId/job/create", async (req, res) => {
   try {
-    const job = await createJobFromLatestClean();
-    const settings = await loadSettings();
-    res.json({ ok: true, message: "สร้างคิวจาก clean_ready.csv แล้ว", job, settings });
+    const systemId = normalizeSystemId(req.params?.systemId || req.systemId || currentSystemId()) || DEFAULT_SYSTEM_ID;
+    const { job, settings } = await withSystem(systemId, async () => ({
+      job: await createJobFromLatestClean(systemId),
+      settings: await loadSettings(),
+    }));
+    res.json({ ok: true, systemId, message: "สร้างคิวจาก clean_ready.csv แล้ว", job, settings });
   } catch (error) {
-    res.status(400).json({ error: error.message || "สร้างคิวไม่สำเร็จ" });
+    res.status(400).json({
+      error: error.message || "สร้างคิวไม่สำเร็จ",
+      ...(error?.details || {}),
+    });
   }
 });
 
