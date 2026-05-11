@@ -226,12 +226,129 @@
     }
     .help-actions { display:flex; flex-wrap:wrap; gap:10px; }
     .help-note { color: var(--muted); font-size: 12px; }
+    .system-switcher {
+      display:grid;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .system-tabs {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .system-tab {
+      min-height:34px;
+      border-color:rgba(139,181,255,.2);
+      background:rgba(21,33,54,.96);
+      color:var(--text);
+    }
+    .system-tab.active {
+      background:linear-gradient(180deg, var(--accent-2), var(--accent));
+      color:#fff;
+    }
+    .system-mini-grid {
+      display:grid;
+      grid-template-columns:repeat(5, minmax(150px, 1fr));
+      gap:8px;
+    }
+    .system-mini-card {
+      border:1px solid rgba(139,181,255,.14);
+      background:rgba(11,18,31,.86);
+      border-radius:10px;
+      padding:8px 10px;
+      cursor:pointer;
+    }
+    .system-mini-card.active { box-shadow:inset 3px 0 0 rgba(98,168,245,.75); }
+    .system-mini-card .top { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:5px; }
+    .system-mini-card .name { font-weight:800; }
+    .system-mini-card .metrics { display:grid; grid-template-columns:repeat(5, 1fr); gap:4px; font-size:11px; color:var(--muted); }
+    .system-mini-card .metrics strong { display:block; color:var(--text); font-size:13px; }
 
 
     @media (max-width: 768px) {
       .help-fab { width: min(118px, 28vw); left: 10px; bottom: 18px; }
       .help-title { font-size: 20px; }
       .help-content { min-height: 140px; }
+      .system-mini-grid { grid-template-columns:1fr; }
+    }
+
+    /* Compact dashboard overrides */
+    body { font-size: 13px; }
+    .wrap { width:min(1500px, calc(100% - 20px)); padding:10px 0 24px; }
+    .topbar { margin-bottom:10px; border-radius:14px; padding:8px 12px; gap:12px; }
+    .brand { gap:10px; }
+    .brand-badge { width:38px; height:38px; border-radius:12px; font-size:17px; }
+    .brand h1 { font-size:clamp(17px, 1.7vw, 22px); letter-spacing:0; }
+    .brand p { margin-top:2px; font-size:11px; }
+    .chip-row { gap:6px; }
+    .chip { min-height:30px; padding:0 10px; gap:6px; font-size:12px; }
+    .hero { margin-bottom:10px; padding:10px 12px; border-radius:14px; }
+    .hero-grid { grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; }
+    .hero h2 { font-size:clamp(16px, 2vw, 20px); line-height:1.15; letter-spacing:0; }
+    .hero p { margin-top:4px; line-height:1.45; font-size:12px; }
+    .hero-note { margin-top:6px; padding:5px 8px; gap:6px; font-size:12px; }
+    .legend { gap:6px; margin-top:6px; }
+    .stack { gap:8px; }
+    .hero .stack { display:flex; flex-wrap:wrap; justify-content:flex-end; }
+    .mini-stat { padding:8px 10px; border-radius:12px; }
+    .hero .mini-stat { min-width:130px; }
+    .mini-stat .label { margin-bottom:3px; font-size:11px; }
+    .mini-stat .value { font-size:15px; letter-spacing:0; }
+    .sections { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+    .section-card:first-child, .section-card:last-child { grid-column:1 / -1; }
+    .card, .section-card { border-radius:14px; padding:12px; }
+    .card-header { gap:8px; margin-bottom:8px; }
+    .section-title { font-size:17px; letter-spacing:0; }
+    .section-subtitle { margin-top:3px; font-size:12px; line-height:1.35; }
+    .row { gap:8px; }
+    .row > * { min-width:160px; }
+    label { margin-bottom:4px; font-size:12px; }
+    input, select, textarea { min-height:34px; height:34px; padding:0 10px; border-radius:10px; font-size:13px; }
+    textarea { height:auto; padding-top:8px; padding-bottom:8px; }
+    input:focus, select:focus, textarea:focus { box-shadow:0 0 0 3px rgba(51,144,236,.14); }
+    button, .btn { min-height:34px; padding:0 12px; border-radius:10px; gap:6px; font-size:13px; }
+    .status { min-height:42px; padding:8px 10px; border-radius:10px; line-height:1.4; font-size:12px; }
+    .table-shell { border-radius:12px; }
+    table { min-width:820px; font-size:12px; }
+    th, td { padding:6px 8px; vertical-align:middle; }
+    th { font-size:11px; }
+    .pill { min-height:22px; padding:0 8px; font-size:11px; }
+    code { padding:2px 5px; border-radius:7px; }
+    .grid-2, .auto-grid, .board-grid, .timeline-grid, .subgrid-2 { gap:10px; }
+    .cards-grid { grid-template-columns:repeat(6, minmax(100px, 1fr)); gap:8px; }
+    .metric-card { padding:8px 10px; border-radius:10px; }
+    .metric-card .label { margin-bottom:3px; font-size:11px; }
+    .metric-card .value { font-size:20px; letter-spacing:0; }
+    .metric-card .sub { margin-top:3px; }
+    .alert-stack, .digital-board { gap:8px; }
+    .alert-box { padding:8px 10px; border-radius:10px; }
+    .countdown { padding:8px 10px; border-radius:10px; gap:8px; }
+    .countdown .time { font-size:22px; letter-spacing:0; }
+    .progress-shell { height:9px; }
+    .timeline-list { gap:8px; max-height:180px; }
+    .timeline-item { padding:8px 10px; border-radius:10px; }
+    .timeline-item .when { margin-bottom:3px; }
+    .report-box { min-height:0; max-height:200px; overflow:auto; }
+    .action-stack { grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:8px; max-width:none; }
+    .downloads-grid { grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-top:8px; }
+    .account-actions { display:grid; grid-template-columns:repeat(2, minmax(88px, 1fr)); gap:6px; min-width:210px; }
+    .account-actions button { min-height:28px; padding:0 8px; border-radius:8px; font-size:12px; }
+    .compact-details summary { cursor:pointer; color:var(--muted); font-weight:700; }
+    .compact-details[open] { min-width:190px; }
+    .compact-meta { display:grid; gap:3px; margin-top:5px; }
+    details.advanced { border-radius:10px; padding:8px 10px; margin-top:8px; }
+    .advanced-body { margin-top:8px; gap:8px; }
+    .help-fab { width:min(120px, 12vw); bottom:16px; }
+    .help-dialog { border-radius:14px; }
+    .help-shell { padding:12px; gap:10px; }
+    .help-title { font-size:18px; }
+    .help-menu, .help-actions { gap:8px; }
+    .help-content { min-height:140px; max-height:220px; overflow:auto; padding:10px; border-radius:10px; line-height:1.45; }
+    @media (max-width: 1180px) {
+      .sections { grid-template-columns:1fr; }
+      .section-card:first-child, .section-card:last-child { grid-column:auto; }
+      .hero-grid { grid-template-columns:1fr; }
+      .system-mini-grid { grid-template-columns:repeat(2, minmax(150px, 1fr)); }
     }
 
   </style>
@@ -252,6 +369,19 @@
         <button id="logoutBtn" type="button" class="ghost">ออกจากระบบ</button>
       </div>
     </header>
+
+    <section class="system-switcher" aria-label="เลือกระบบ">
+      <div id="systemTabs" class="system-tabs">
+        <button class="system-tab active" type="button" data-system-id="A">ระบบ A</button>
+        <button class="system-tab" type="button" data-system-id="B">ระบบ B</button>
+        <button class="system-tab" type="button" data-system-id="C">ระบบ C</button>
+        <button class="system-tab" type="button" data-system-id="D">ระบบ D</button>
+        <button class="system-tab" type="button" data-system-id="E">ระบบ E</button>
+      </div>
+      <div id="systemMiniCards" class="system-mini-grid">
+        <div class="system-mini-card active"><div class="top"><span class="name">ระบบ A</span><span class="pill">โหลด...</span></div></div>
+      </div>
+    </section>
 
     <section class="hero">
       <div class="hero-grid">
@@ -298,8 +428,6 @@
               <label>API_ID</label>
               <input id="accountApiId" placeholder="12345678" required />
             </div>
-          </div>
-          <div class="row" style="margin-top:12px;">
             <div>
               <label>API_HASH</label>
               <input id="accountApiHash" placeholder="ใส่ API_HASH" required />
@@ -318,34 +446,33 @@
         <div class="subgrid-2" style="margin-top:14px;">
           <div>
             <div id="pendingInfo" class="status">ยังไม่มีบัญชีที่รอยืนยัน</div>
-            <div class="row" style="margin-top:12px;">
+            <div class="row" style="margin-top:8px;">
               <div>
                 <label>OTP</label>
                 <input id="otpCode" placeholder="ใส่ OTP จาก Telegram" />
               </div>
-            </div>
-            <div class="action-stack">
-              <button id="verifyOtpBtn" class="info" type="button">ยืนยัน OTP</button>
-            </div>
-            <div class="row" style="margin-top:12px;">
               <div>
                 <label>รหัส 2FA</label>
                 <input id="twoFaPassword" type="password" placeholder="ใส่เมื่อระบบแจ้งว่าต้องใช้ 2FA" />
               </div>
             </div>
             <div class="action-stack">
+              <button id="verifyOtpBtn" class="info" type="button">ยืนยัน OTP</button>
               <button id="verifyPasswordBtn" class="ghost" type="button">ยืนยัน 2FA</button>
             </div>
           </div>
 
-          <div class="status">
-            การใช้งานบัญชี:
-            1) เพิ่มบัญชี
-            2) กดส่ง OTP จากแถวบัญชี
-            3) ยืนยัน OTP / 2FA
-            4) กดใช้บัญชีนี้
-            5) ถ้าบัญชีค้าง ให้กดรีล็อกอินบัญชีหรือล้าง session บัญชี
-          </div>
+          <details class="advanced">
+            <summary>รายละเอียดบัญชี / วิธีใช้</summary>
+            <div class="advanced-body status">
+              การใช้งานบัญชี:
+              1) เพิ่มบัญชี
+              2) กดส่ง OTP จากแถวบัญชี
+              3) ยืนยัน OTP / 2FA
+              4) กดใช้บัญชีนี้
+              5) ถ้าบัญชีค้าง ให้กดรีล็อกอินบัญชีหรือล้าง session บัญชี
+            </div>
+          </details>
         </div>
 
         <div class="table-shell" style="margin-top:14px;">
@@ -399,12 +526,15 @@
         </form>
         <div id="intakeStatus" class="status" style="margin-top:12px;">พร้อมรับไฟล์</div>
         <div id="intakeSummary" class="status" style="margin-top:12px;">ยังไม่มีผลล้างไฟล์</div>
-        <div class="downloads-grid">
-          <a class="btn ghost" href="/download/clean_ready.csv" target="_blank">โหลด clean_ready.csv</a>
-          <a class="btn ghost" href="/download/invalid_rows.csv" target="_blank">โหลด invalid_rows.csv</a>
-          <a class="btn ghost" href="/download/duplicate_phones.csv" target="_blank">โหลด duplicate_phones.csv</a>
-          <a class="btn ghost" href="/download/summary.json" target="_blank">โหลด summary.json</a>
-        </div>
+        <details class="advanced">
+          <summary>download buttons</summary>
+          <div class="downloads-grid">
+            <a class="btn ghost" data-download-name="clean_ready.csv" href="/download/clean_ready.csv" target="_blank">โหลด clean_ready.csv</a>
+            <a class="btn ghost" data-download-name="invalid_rows.csv" href="/download/invalid_rows.csv" target="_blank">โหลด invalid_rows.csv</a>
+            <a class="btn ghost" data-download-name="duplicate_phones.csv" href="/download/duplicate_phones.csv" target="_blank">โหลด duplicate_phones.csv</a>
+            <a class="btn ghost" data-download-name="summary.json" href="/download/summary.json" target="_blank">โหลด summary.json</a>
+          </div>
+        </details>
       </section>
 
       <section class="card section-card">
@@ -500,17 +630,26 @@
         </div>
 
         <div id="summary" class="status">ยังไม่มีผลล่าสุด</div>
+        <div id="segmentationSummary" class="status">ยังไม่มีสรุป segmentation</div>
 
-        <div class="downloads-grid">
-          <button id="downloadProcessedCsvBtn" class="info" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (CSV)</button>
-          <button id="downloadProcessedXlsxBtn" class="ghost" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (XLSX)</button>
-          <button id="downloadRemainingCsvBtn" class="info" type="button">ดาวน์โหลดไฟล์ที่เหลือ (CSV)</button>
-          <button id="downloadRemainingXlsxBtn" class="ghost" type="button">ดาวน์โหลดไฟล์ที่เหลือ (XLSX)</button>
-          <button id="downloadRunLogBtn" class="ghost" type="button">ดาวน์โหลดบันทึกการทำงาน</button>
-          <a class="btn ghost" href="/download/telegram_matches.csv" target="_blank">ผลล่าสุด CSV</a>
-          <a class="btn ghost" href="/download/telegram_matches_all.csv" target="_blank">ผลรวม CSV</a>
-          <a class="btn ghost" href="/download/retry_rows.csv" target="_blank">retry_rows.csv</a>
-        </div>
+        <details class="advanced">
+          <summary>download buttons</summary>
+          <div class="downloads-grid">
+            <button id="downloadProcessedCsvBtn" class="info" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (CSV)</button>
+            <button id="downloadProcessedXlsxBtn" class="ghost" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (XLSX)</button>
+            <button id="downloadRemainingCsvBtn" class="info" type="button">ดาวน์โหลดไฟล์ที่เหลือ (CSV)</button>
+            <button id="downloadRemainingXlsxBtn" class="ghost" type="button">ดาวน์โหลดไฟล์ที่เหลือ (XLSX)</button>
+            <button id="downloadRunLogBtn" class="ghost" type="button">ดาวน์โหลดบันทึกการทำงาน</button>
+            <button id="downloadAllResultsBtn" class="ghost" type="button">ดาวน์โหลดผลทั้งหมด</button>
+            <button id="downloadYesOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram YES</button>
+            <button id="downloadNoOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram NO</button>
+            <button id="downloadRetryOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram RETRY</button>
+            <button id="downloadMarketingAllowedBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Marketing Allowed</button>
+            <button id="downloadWinbackBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Winback</button>
+            <button id="downloadRetryLaterBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Retry Later</button>
+            <a class="btn ghost" data-download-name="retry_rows.csv" href="/download/retry_rows.csv" target="_blank">retry_rows.csv</a>
+          </div>
+        </details>
 
         <div class="table-shell" style="margin-top:12px;">
           <div class="table-scroll">
@@ -625,6 +764,7 @@
     const latestWorkEl = document.getElementById("latestWork");
     const jobStatusEl = document.getElementById("jobStatus");
     const summaryEl = document.getElementById("summary");
+    const segmentationSummaryEl = document.getElementById("segmentationSummary");
     const resultsBody = document.getElementById("resultsBody");
     const accountsBody = document.getElementById("accountsBody");
     const alertPanelEl = document.getElementById("alertPanel");
@@ -645,6 +785,15 @@
     const downloadRemainingCsvBtnEl = document.getElementById("downloadRemainingCsvBtn");
     const downloadRemainingXlsxBtnEl = document.getElementById("downloadRemainingXlsxBtn");
     const downloadRunLogBtnEl = document.getElementById("downloadRunLogBtn");
+    const downloadAllResultsBtnEl = document.getElementById("downloadAllResultsBtn");
+    const downloadYesOnlyBtnEl = document.getElementById("downloadYesOnlyBtn");
+    const downloadNoOnlyBtnEl = document.getElementById("downloadNoOnlyBtn");
+    const downloadRetryOnlyBtnEl = document.getElementById("downloadRetryOnlyBtn");
+    const downloadMarketingAllowedBtnEl = document.getElementById("downloadMarketingAllowedBtn");
+    const downloadWinbackBtnEl = document.getElementById("downloadWinbackBtn");
+    const downloadRetryLaterBtnEl = document.getElementById("downloadRetryLaterBtn");
+    const systemTabsEl = document.getElementById("systemTabs");
+    const systemMiniCardsEl = document.getElementById("systemMiniCards");
 
 
     const helpFabEl = document.getElementById("helpFab");
@@ -678,6 +827,22 @@
     let countdownTimer = null;
     let countdownSec = 0;
     let pendingAccountId = "";
+    let activeSystemId = localStorage.getItem("telegramDashboardSystemId") || "A";
+    const SYSTEM_IDS = ["A", "B", "C", "D", "E"];
+
+    function apiBase() {
+      return `/api/systems/${encodeURIComponent(activeSystemId)}`;
+    }
+
+    function downloadUrl(name) {
+      return `${apiBase()}/download/${encodeURIComponent(name)}`;
+    }
+
+    function updateDownloadLinks() {
+      document.querySelectorAll("[data-download-name]").forEach((link) => {
+        link.href = downloadUrl(link.dataset.downloadName || "");
+      });
+    }
 
     function setStatus(el, message, type = "normal") {
       el.textContent = message;
@@ -716,12 +881,25 @@
       if (key === 'READY') return 'พร้อมเริ่ม';
       if (key === 'RUNNING') return 'กำลังทำงาน';
       if (key === 'WAITING_RETRY' || key === 'WAITING_RETRY_COOLDOWN') return 'พักรอลองใหม่';
+      if (key === 'WAITING_RETRY_MANUAL') return 'พักบัญชี รอกดเอง';
+      if (key === 'PAUSED_TOO_MANY_RETRY') return 'พักบัญชีเพราะ RETRY สูง';
+      if (key === 'PAUSED_RETRY_COOLDOWN') return 'พักรอลองใหม่';
       if (key === 'COMPLETED' || key === 'DONE') return 'เสร็จสิ้น';
       if (key === 'ERROR') return 'เกิดข้อผิดพลาด';
       if (key === 'PAUSED') return 'หยุดชั่วคราว';
       if (key === 'WAITING_FLOOD') return 'รอ FloodWait';
       if (key === 'PAUSED_FLOOD_STALE') return 'หยุดชั่วคราว (Flood ค้าง)';
       return status || '-';
+    }
+
+    function isHighRetryPauseState(status, retryRatio) {
+      const key = String(status || '').toUpperCase();
+      return key === 'PAUSED_TOO_MANY_RETRY' || key === 'WAITING_RETRY_MANUAL' || Number(retryRatio || 0) >= 0.8;
+    }
+
+    function forceAutoOffInUi() {
+      const autoRunEl = document.getElementById("autoRun");
+      if (autoRunEl) autoRunEl.value = "false";
     }
 
     function setDownloadButtons(downloads = {}) {
@@ -735,8 +913,53 @@
       toggle(downloadRemainingCsvBtnEl, Boolean(downloads.remainingCsv));
       toggle(downloadRemainingXlsxBtnEl, Boolean(downloads.remainingXlsx));
       toggle(downloadRunLogBtnEl, Boolean(downloads.runLog));
+      toggle(downloadAllResultsBtnEl, Boolean(downloads.allResultsCsv));
+      toggle(downloadYesOnlyBtnEl, Boolean(downloads.yesOnlyCsv));
+      toggle(downloadNoOnlyBtnEl, Boolean(downloads.noOnlyCsv));
+      toggle(downloadRetryOnlyBtnEl, Boolean(downloads.retryOnlyCsv));
+      toggle(downloadMarketingAllowedBtnEl, Boolean(downloads.marketingAllowedCsv));
+      toggle(downloadWinbackBtnEl, Boolean(downloads.winbackCsv));
+      toggle(downloadRetryLaterBtnEl, Boolean(downloads.retryLaterCsv));
     }
     setDownloadButtons({});
+
+    function renderSystemTabs() {
+      systemTabsEl.querySelectorAll("[data-system-id]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.systemId === activeSystemId);
+      });
+    }
+
+    function renderSystemMiniCards(systems = []) {
+      const list = Array.isArray(systems) && systems.length
+        ? systems
+        : SYSTEM_IDS.map((id) => ({ id, label: `ระบบ ${id}`, status: "-", processed: 0, remaining: 0, yes: 0, no: 0, retry: 0 }));
+      systemMiniCardsEl.innerHTML = list.map((system) => `
+        <button class="system-mini-card ${system.id === activeSystemId ? "active" : ""}" type="button" data-system-id="${escapeHtml(system.id)}">
+          <div class="top">
+            <span class="name">${escapeHtml(system.label || `ระบบ ${system.id}`)}</span>
+            <span class="pill ${system.autoRun ? "connected" : ""}">${escapeHtml(toThaiStatus(system.status || "-"))}</span>
+          </div>
+          <div class="small">${escapeHtml(system.account || "-")}</div>
+          <div class="metrics">
+            <span><strong>${Number(system.processed || 0)}</strong>done</span>
+            <span><strong>${Number(system.remaining || 0)}</strong>left</span>
+            <span><strong>${Number(system.yes || 0)}</strong>YES</span>
+            <span><strong>${Number(system.no || 0)}</strong>NO</span>
+            <span><strong>${Number(system.retry || 0)}</strong>RETRY</span>
+          </div>
+        </button>
+      `).join("");
+    }
+
+    async function loadSystemsSummary() {
+      try {
+        const data = await fetchJson("/api/systems");
+        renderSystemMiniCards(data.systems || []);
+      } catch {
+        renderSystemMiniCards([]);
+      }
+      renderSystemTabs();
+    }
 
     function renderAlerts(alerts) {
       if (!alerts || !alerts.length) {
@@ -806,8 +1029,10 @@
       const paint = () => {
         countdownTextEl.textContent = countdownSec > 0 ? formatSeconds(countdownSec) : '--:--';
         if (countdownSec > 0) {
-          countdownHintEl.textContent = autoStatus === 'WAITING_FLOOD' || autoStatus === 'WAITING_RETRY'
+          countdownHintEl.textContent = autoStatus === 'WAITING_FLOOD'
             ? 'ครบเวลาแล้วระบบจะพยายามทำต่อเองถ้า Auto ON'
+            : autoStatus === 'WAITING_RETRY'
+              ? 'ครบเวลาแล้วค่อยกดทำต่อเองถ้า Telegram พร้อม'
             : 'ยังไม่มีเวลารอ';
         } else {
           countdownHintEl.textContent = 'ยังไม่มีเวลารอ';
@@ -831,21 +1056,28 @@
       lastUpdatedTextEl.textContent = `อัปเดตล่าสุด: ${formatDateTime(data.now)}`;
 
       const job = data.job || {};
+      const retryManualPause = Boolean(job.manualRetryRequired) || isHighRetryPauseState(job.displayStatus || job.status, job.lastRetryRatio);
+      if (retryManualPause) forceAutoOffInUi();
       reportBoardEl.textContent = [
+        retryManualPause ? 'คำเตือน: Telegram กำลังให้พักบัญชี เพราะ RETRY สูง Auto ถูกปิดแล้ว ต้องกด manual ต่อเท่านั้น' : '',
         `ชื่องาน: ${job.jobLabel || '-'}`,
         `ไฟล์จริง: ${job.fileName || job.sourceFile || '-'}`,
         `คิว: ${job.sourceFile || '-'}`,
         `สถานะคิว: ${toThaiStatus(job.displayStatus || '-')}`,
-        `Auto: ${toThaiStatus(job.displayAutoStatus || '-')}`,
+        `Auto: ${toThaiStatus(retryManualPause ? 'OFF' : (job.displayAutoStatus || '-'))}`,
         `บัญชี: ${job.lockedAccountLabel || '-'} ${job.lockedAccountPhone ? `(${job.lockedAccountPhone})` : ''}`,
         `ทำแล้ว: ${job.processedRows || 0}`,
         `เหลือ: ${job.remainingRows || 0}`,
+        `chunk ทั้งหมด: ${job.chunks?.length || 0}`,
+        `chunk ปัจจุบัน: ${job.currentChunkIndex || 0}`,
+        `row ใน chunk: ${job.currentRowIndex || 0}`,
         `รอบล่าสุด: ${job.lastBatchNumber || 0}`,
         `ช่วงล่าสุด: ${job.lastBatchStart || 0} - ${job.lastBatchEnd || 0}`,
         `เวลารอบถัดไป: ${job.nextRunAt ? formatDateTime(job.nextRunAt) : '-'}`,
         `retry ratio ล่าสุด: ${Number(job.lastRetryRatio || 0).toFixed(2)}`
-      ].join('\n');
+      ].filter(Boolean).join('\n');
       setDownloadButtons(data.downloads || {});
+      renderSegmentationSummary(data.segmentation || null);
 
       const lastJob = data.lastJob || {};
       latestWorkEl.textContent = [
@@ -866,7 +1098,7 @@
         `เริ่มรอบล่าสุด: ${data?.latestMeta?.generatedAt ? formatDateTime(data.latestMeta.generatedAt) : '-'}`
       ].join('\n');
 
-      startCountdown(job.remainingSec || 0, job.displayAutoStatus || 'OFF');
+      startCountdown(job.remainingSec || 0, retryManualPause ? 'OFF' : (job.displayAutoStatus || 'OFF'));
     }
 
     function accountStatusPill(account) {
@@ -895,21 +1127,31 @@
           </td>
           <td>${escapeHtml(account.phone)}</td>
           <td>
-            <div>API_ID: ${escapeHtml(account.apiId || "")}</div>
-            <div class="small">API_HASH: ${escapeHtml(account.apiHashMasked || "")}</div>
+            <details class="compact-details">
+              <summary>API</summary>
+              <div class="compact-meta">
+                <div>API_ID: ${escapeHtml(account.apiId || "")}</div>
+                <div class="small">API_HASH: ${escapeHtml(account.apiHashMasked || "")}</div>
+              </div>
+            </details>
           </td>
           <td>
             ${accountStatusPill(account)}
             ${account.lastError ? `<div class="small" style="color:#ffb6bf;margin-top:6px;">${escapeHtml(account.lastError)}</div>` : ""}
           </td>
           <td>
-            ${account.me ? `
-              <div>${escapeHtml(account.me.firstName || "")} ${escapeHtml(account.me.lastName || "")}</div>
-              <div class="small">@${escapeHtml(account.me.username || "-")}</div>
-            ` : '<span class="small">ยังไม่เชื่อม</span>'}
+            <details class="compact-details">
+              <summary>${account.me ? "เชื่อมแล้ว" : "รายละเอียด"}</summary>
+              <div class="compact-meta">
+                ${account.me ? `
+                  <div>${escapeHtml(account.me.firstName || "")} ${escapeHtml(account.me.lastName || "")}</div>
+                  <div class="small">@${escapeHtml(account.me.username || "-")}</div>
+                ` : '<span class="small">ยังไม่เชื่อม</span>'}
+              </div>
+            </details>
           </td>
           <td>
-            <div class="action-stack" style="max-width:none; margin-top:0;">
+            <div class="account-actions">
               <button class="ghost" type="button" onclick="sendCode('${account.id}')">ส่ง OTP</button>
               <button class="info" type="button" onclick="selectAccount('${account.id}')">ใช้บัญชีนี้</button>
               <button class="ghost" type="button" onclick="reloginAccount('${account.id}')">รีล็อกอินบัญชี</button>
@@ -955,11 +1197,14 @@
     function renderAutoStatus(data) {
       const queueStatus = String(data.queueStatus || '').toUpperCase();
       const requiresFloodReset = Boolean(data.requiresFloodReset) || queueStatus === 'PAUSED_FLOOD_STALE';
-      resumeAutoBtnEl.disabled = requiresFloodReset;
-      startAutoBtnEl.disabled = requiresFloodReset;
+      const retryManualPause = Boolean(data.manualRetryRequired || data.retryRatioHigh) || isHighRetryPauseState(queueStatus, data.retryRatio);
+      if (retryManualPause) forceAutoOffInUi();
+      resumeAutoBtnEl.disabled = requiresFloodReset || retryManualPause;
+      startAutoBtnEl.disabled = requiresFloodReset || retryManualPause;
       resetFloodBtnEl.disabled = !requiresFloodReset;
       setStatus(autoStatusEl, [
-        `Auto: ${toThaiStatus(data.status || "OFF")}`,
+        retryManualPause ? 'คำเตือน: Telegram กำลังให้พักบัญชี เพราะ RETRY สูง ให้ปิด Auto และกดทำรอบถัดไปเองเท่านั้น' : '',
+        `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (data.status || "OFF"))}`,
         `สถานะคิว: ${toThaiStatus(queueStatus || "-")}`,
         `ชื่องาน: ${data.jobLabel || "-"}`,
         `ไฟล์จริง: ${data.fileName || data.file || "-"}`,
@@ -970,7 +1215,7 @@
         `เวลารอบถัดไป: ${data.nextRunAt || "-"}`,
         `FloodWait เหลือ: ${data.floodWaitSec || 0} วินาที`,
         `retry ratio ล่าสุด: ${Number(data.retryRatio || 0).toFixed(2)}`
-      ].join("\n"));
+      ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
     }
 
     function renderIntakeSummary(data) {
@@ -992,13 +1237,20 @@
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
         return;
       }
+      const retryManualPause = Boolean(job.manualRetryRequired) || isHighRetryPauseState(job.displayStatus || job.status, job.lastRetryRatio);
+      if (retryManualPause) forceAutoOffInUi();
       setStatus(jobStatusEl, [
+        retryManualPause ? 'คำเตือน: Telegram กำลังให้พักบัญชี เพราะ RETRY สูง ต้องกด manual ต่อเท่านั้น' : '',
         `ชื่องาน: ${job.jobLabel || "-"}`,
         `หมายเหตุ: ${job.jobNote || "-"}`,
         `ไฟล์จริง: ${job.fileName || job.sourceFile || "-"}`,
         `ไฟล์: ${job.sourceFile || "-"}`,
         `บัญชีที่ล็อกกับคิวนี้: ${job.lockedAccountLabel || "-"} ${job.lockedAccountPhone ? `(${job.lockedAccountPhone})` : ""}`,
         `ทั้งหมด: ${job.totalRows || 0}`,
+        `chunk file size: ${job.chunkFileSize || 0}`,
+        `chunk ทั้งหมด: ${job.chunks?.length || 0}`,
+        `chunk ปัจจุบัน: ${job.currentChunkIndex || 0}`,
+        `row ใน chunk: ${job.currentRowIndex || 0}`,
         `ทำแล้ว: ${job.processedRows || 0}`,
         `เหลือ: ${job.remainingRows || 0}`,
         `ต่อรอบ: ${job.perRunLimit || 0}`,
@@ -1009,9 +1261,9 @@
         `ไม่เจอสะสม: ${job.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${job.retryCountTotal || 0}`,
         `สถานะคิว: ${toThaiStatus(job.status || "-")}`,
-        `Auto: ${toThaiStatus(job.autoStatus || "OFF")}`,
+        `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (job.autoStatus || "OFF"))}`,
         `ถัดไป: ${job.nextRunAt || "-"}`
-      ].join("\n"));
+      ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
     }
 
     function renderSummary(latest) {
@@ -1020,7 +1272,10 @@
         return;
       }
       const meta = latest.meta;
+      const retryManualPause = Boolean(meta.manualRetryRequired) || isHighRetryPauseState(meta.autoStatus, meta.retryRatio);
+      if (retryManualPause) forceAutoOffInUi();
       setStatus(summaryEl, [
+        retryManualPause ? 'คำเตือน: Telegram กำลังให้พักบัญชี เพราะ RETRY สูง รอบนี้ไม่นับ RETRY เป็น YES/NO และต้องกด manual ต่อเท่านั้น' : '',
         `ชื่องาน: ${meta.jobLabel || "-"}`,
         `หมายเหตุ: ${meta.jobNote || "-"}`,
         `ไฟล์จริง: ${meta.fileName || meta.sourceFile || "-"}`,
@@ -1037,10 +1292,10 @@
         `เจอสะสม: ${meta.matchedCountTotal || 0}`,
         `ไม่เจอสะสม: ${meta.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${meta.retryCountTotal || 0}`,
-        `Auto: ${toThaiStatus(meta.autoStatus || "OFF")}`,
+        `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (meta.autoStatus || "OFF"))}`,
         `เวลารอบถัดไป: ${meta.nextRunAt || "-"}`,
         `เวลาสร้างผล: ${meta.generatedAt || "-"}`
-      ].join("\n"));
+      ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
     }
 
     function renderRows(rows) {
@@ -1065,6 +1320,36 @@
       }).join("");
     }
 
+    function renderSegmentationSummary(segmentation) {
+      if (!segmentation) {
+        setStatus(segmentationSummaryEl, "ยังไม่มีสรุป segmentation");
+        return;
+      }
+      const yes = Number(segmentation?.telegramStatus?.YES || 0);
+      const no = Number(segmentation?.telegramStatus?.NO || 0);
+      const retry = Number(segmentation?.telegramStatus?.RETRY || 0);
+      const consentYes = Number(segmentation?.consentStatus?.yes || 0);
+      const consentNo = Number(segmentation?.consentStatus?.no || 0);
+      const consentUnknown = Number(segmentation?.consentStatus?.unknown || 0);
+      const topSource = (segmentation.topSourceByYesRate || [])
+        .slice(0, 3)
+        .map((item) => `${item.sourceLabel} (YES ${(Number(item.yesRate || 0) * 100).toFixed(1)}%, n=${item.total || 0})`)
+        .join(", ") || "-";
+      const lowQuality = (segmentation.lowQualitySources || [])
+        .slice(0, 3)
+        .map((item) => `${item.sourceLabel} (YES ${(Number(item.yesRate || 0) * 100).toFixed(1)}%, RETRY=${item.retry || 0})`)
+        .join(", ") || "-";
+
+      setStatus(segmentationSummaryEl, [
+        `Segmentation summary`,
+        `total rows: ${segmentation.totalRows || 0}`,
+        `YES/NO/RETRY: ${yes}/${no}/${retry}`,
+        `consent yes/no/unknown: ${consentYes}/${consentNo}/${consentUnknown}`,
+        `top sourceLabel by YES rate: ${topSource}`,
+        `low quality sourceLabel: ${lowQuality}`,
+      ].join("\n"), "ok");
+    }
+
     async function fetchJson(url, options = {}, retry = true) {
       try {
         const response = await fetch(url, { cache: "no-store", credentials: "same-origin", ...options });
@@ -1084,23 +1369,23 @@
     }
 
     async function loadAccounts() {
-      const data = await fetchJson("/api/accounts");
+      const data = await fetchJson(`${apiBase()}/accounts`);
       renderAccounts(data.accounts || []);
     }
 
     async function loadSettings() {
-      const data = await fetchJson("/api/settings");
+      const data = await fetchJson(`${apiBase()}/settings`);
       renderSettings(data);
     }
 
     async function loadAutoStatus() {
-      const data = await fetchJson("/api/auto-status");
+      const data = await fetchJson(`${apiBase()}/auto-status`);
       renderAutoStatus(data);
     }
 
     async function loadIntakeLatest() {
       try {
-        const data = await fetchJson("/api/intake/latest");
+        const data = await fetchJson(`${apiBase()}/intake/latest`);
         renderIntakeSummary(data);
       } catch {
         setStatus(intakeSummaryEl, "ยังไม่มีผลล้างไฟล์");
@@ -1109,7 +1394,7 @@
 
     async function loadJobStatus() {
       try {
-        const data = await fetchJson("/api/job-status");
+        const data = await fetchJson(`${apiBase()}/job/status`);
         renderJob(data);
       } catch {
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
@@ -1118,7 +1403,7 @@
 
     async function loadLatest() {
       try {
-        const data = await fetchJson("/api/latest");
+        const data = await fetchJson(`${apiBase()}/latest`);
         renderSummary(data);
         renderRows(data.rows || []);
       } catch {
@@ -1129,7 +1414,7 @@
 
     async function loadDashboard() {
       try {
-        const data = await fetchJson('/api/dashboard');
+        const data = await fetchJson(`${apiBase()}/dashboard`);
         renderDashboard(data);
       } catch (error) {
         reportBoardEl.textContent = error.message || 'โหลด dashboard ไม่สำเร็จ';
@@ -1137,6 +1422,8 @@
     }
 
     async function refreshAll() {
+      renderSystemTabs();
+      updateDownloadLinks();
       await Promise.allSettled([
         loadSettings(),
         loadAutoStatus(),
@@ -1145,6 +1432,7 @@
         loadJobStatus(),
         loadLatest(),
         loadDashboard(),
+        loadSystemsSummary(),
       ]);
     }
 
@@ -1168,7 +1456,7 @@
           retryRatioThreshold: Number(document.getElementById("retryRatioThreshold").value),
           waitFloodAutomatically: document.getElementById("waitFloodAutomatically").value === "true",
         };
-        const data = await fetchJson("/api/settings", {
+        const data = await fetchJson(`${apiBase()}/settings`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -1182,7 +1470,7 @@
 
     document.getElementById("startAutoBtn").addEventListener("click", async () => {
       try {
-        await fetchJson("/api/job/start-auto", { method: "POST" });
+        await fetchJson(`${apiBase()}/job/start-auto`, { method: "POST" });
         await refreshAll();
       } catch (error) {
         setStatus(autoStatusEl, error.message, "bad");
@@ -1191,7 +1479,7 @@
 
     document.getElementById("pauseAutoBtn").addEventListener("click", async () => {
       try {
-        await fetchJson("/api/job/pause-auto", { method: "POST" });
+        await fetchJson(`${apiBase()}/job/pause-auto`, { method: "POST" });
         await refreshAll();
       } catch (error) {
         setStatus(autoStatusEl, error.message, "bad");
@@ -1204,7 +1492,7 @@
           setStatus(autoStatusEl, "คิวอยู่สถานะ PAUSED_FLOOD_STALE ต้องกดรีเซ็ต Flood State ก่อน", "warn");
           return;
         }
-        await fetchJson("/api/job/resume-auto", { method: "POST" });
+        await fetchJson(`${apiBase()}/job/resume-auto`, { method: "POST" });
         await refreshAll();
       } catch (error) {
         setStatus(autoStatusEl, error.message, "bad");
@@ -1213,7 +1501,7 @@
 
     document.getElementById("resetFloodBtn").addEventListener("click", async () => {
       try {
-        await fetchJson("/api/job/reset-flood-state", { method: "POST" });
+        await fetchJson(`${apiBase()}/job/reset-flood-state`, { method: "POST" });
         setStatus(autoStatusEl, "รีเซ็ต Flood State แล้ว พร้อมเริ่มรอบใหม่แบบปลอดภัย", "ok");
         await refreshAll();
       } catch (error) {
@@ -1234,7 +1522,7 @@
       formData.append("jobNote", document.getElementById("jobNoteInput").value || "");
       setStatus(intakeStatusEl, "กำลังล้างไฟล์...", "warn");
       try {
-        const data = await fetchJson("/api/intake/upload", { method: "POST", body: formData });
+        const data = await fetchJson(`${apiBase()}/upload`, { method: "POST", body: formData });
         setStatus(intakeStatusEl, data.message || "ล้างไฟล์เรียบร้อย", "ok");
         renderIntakeSummary(data.summary || {});
         await refreshAll();
@@ -1245,7 +1533,7 @@
 
     document.getElementById("createJobBtn").addEventListener("click", async () => {
       try {
-        const data = await fetchJson("/api/jobs/create-from-clean", { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/job/create`, { method: "POST" });
         setStatus(intakeStatusEl, data.message || "สร้างคิวแล้ว", "ok");
         renderJob(data.job);
         await refreshAll();
@@ -1258,7 +1546,7 @@
       e.preventDefault();
       setStatus(accountStatusEl, "กำลังเพิ่มบัญชี...", "warn");
       try {
-        const data = await fetchJson("/api/accounts", {
+        const data = await fetchJson(`${apiBase()}/accounts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1280,7 +1568,7 @@
       pendingAccountId = accountId;
       setStatus(accountStatusEl, "กำลังส่ง OTP...", "warn");
       try {
-        const data = await fetchJson(`/api/accounts/${accountId}/send-code`, { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/accounts/${accountId}/send-code`, { method: "POST" });
         renderAccounts(data.accounts || []);
         setStatus(accountStatusEl, data.message || "ส่ง OTP แล้ว", "ok");
       } catch (error) {
@@ -1296,7 +1584,7 @@
 
       setStatus(accountStatusEl, "กำลังยืนยัน OTP...", "warn");
       try {
-        const data = await fetchJson(`/api/accounts/${account.id}/verify-code`, {
+        const data = await fetchJson(`${apiBase()}/accounts/${account.id}/verify-code`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code }),
@@ -1317,7 +1605,7 @@
 
       setStatus(accountStatusEl, "กำลังยืนยัน 2FA...", "warn");
       try {
-        const data = await fetchJson(`/api/accounts/${account.id}/verify-password`, {
+        const data = await fetchJson(`${apiBase()}/accounts/${account.id}/verify-password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password }),
@@ -1332,7 +1620,7 @@
 
     window.selectAccount = async (accountId) => {
       try {
-        const data = await fetchJson(`/api/accounts/${accountId}/select`, { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/accounts/${accountId}/select`, { method: "POST" });
         renderAccounts(data.accounts || []);
         setStatus(accountStatusEl, data.message || "เลือกบัญชีแล้ว", "ok");
       } catch (error) {
@@ -1343,7 +1631,7 @@
     window.resetSession = async (accountId) => {
       if (!confirm("ต้องการล้าง session ของบัญชีนี้ใช่ไหม")) return;
       try {
-        const data = await fetchJson(`/api/accounts/${accountId}/reset-session`, { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/accounts/${accountId}/reset-session`, { method: "POST" });
         renderAccounts(data.accounts || []);
         setStatus(accountStatusEl, data.message || "ล้าง session แล้ว", "ok");
       } catch (error) {
@@ -1353,9 +1641,9 @@
 
     window.reloginAccount = async (accountId) => {
       try {
-        const reset = await fetchJson(`/api/accounts/${accountId}/reset-session`, { method: "POST" });
+        const reset = await fetchJson(`${apiBase()}/accounts/${accountId}/reset-session`, { method: "POST" });
         renderAccounts(reset.accounts || []);
-        const send = await fetchJson(`/api/accounts/${accountId}/send-code`, { method: "POST" });
+        const send = await fetchJson(`${apiBase()}/accounts/${accountId}/send-code`, { method: "POST" });
         pendingAccountId = accountId;
         renderAccounts(send.accounts || []);
         setStatus(accountStatusEl, send.message || "รีล็อกอินแล้ว กรุณากรอก OTP", "ok");
@@ -1367,7 +1655,7 @@
     window.deleteAccount = async (accountId) => {
       if (!confirm("ต้องการลบบัญชีนี้ใช่ไหม")) return;
       try {
-        const data = await fetchJson(`/api/accounts/${accountId}`, { method: "DELETE" });
+        const data = await fetchJson(`${apiBase()}/accounts/${accountId}`, { method: "DELETE" });
         renderAccounts(data.accounts || []);
         setStatus(accountStatusEl, data.message || "ลบบัญชีแล้ว", "ok");
       } catch (error) {
@@ -1377,7 +1665,7 @@
 
     document.getElementById("runNextBtn").addEventListener("click", async () => {
       try {
-        const data = await fetchJson("/api/run-next", { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/job/run-next`, { method: "POST" });
         renderSummary(data.latestBatch || null);
         renderRows((data.latestBatch && data.latestBatch.rows) || []);
         renderJob(data.job || null);
@@ -1389,19 +1677,40 @@
     });
 
     downloadProcessedCsvBtnEl?.addEventListener("click", () => {
-      window.open("/download/processed.csv", "_blank");
+      window.open(downloadUrl("processed.csv"), "_blank");
     });
     downloadProcessedXlsxBtnEl?.addEventListener("click", () => {
-      window.open("/download/processed.xlsx", "_blank");
+      window.open(downloadUrl("processed.xlsx"), "_blank");
     });
     downloadRemainingCsvBtnEl?.addEventListener("click", () => {
-      window.open("/download/remaining.csv", "_blank");
+      window.open(downloadUrl("remaining.csv"), "_blank");
     });
     downloadRemainingXlsxBtnEl?.addEventListener("click", () => {
-      window.open("/download/remaining.xlsx", "_blank");
+      window.open(downloadUrl("remaining.xlsx"), "_blank");
     });
     downloadRunLogBtnEl?.addEventListener("click", () => {
-      window.open("/download/run-log", "_blank");
+      window.open(downloadUrl("run-log"), "_blank");
+    });
+    downloadAllResultsBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("telegram_matches_all.csv"), "_blank");
+    });
+    downloadYesOnlyBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("yes_only.csv"), "_blank");
+    });
+    downloadNoOnlyBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("no_only.csv"), "_blank");
+    });
+    downloadRetryOnlyBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("retry_only.csv"), "_blank");
+    });
+    downloadMarketingAllowedBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("marketing_allowed.csv"), "_blank");
+    });
+    downloadWinbackBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("winback.csv"), "_blank");
+    });
+    downloadRetryLaterBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("retry_later.csv"), "_blank");
     });
 
     document.getElementById("refreshJobBtn").addEventListener("click", async () => {
@@ -1411,7 +1720,7 @@
     document.getElementById("resetJobBtn").addEventListener("click", async () => {
       if (!confirm("ต้องการล้างคิวและผลลัพธ์ทั้งหมดใช่ไหม")) return;
       try {
-        const data = await fetchJson("/api/reset-job", { method: "POST" });
+        const data = await fetchJson(`${apiBase()}/job/reset`, { method: "POST" });
         setStatus(summaryEl, data.message || "ล้างคิวแล้ว", "ok");
         await refreshAll();
       } catch (error) {
@@ -1419,7 +1728,35 @@
       }
     });
 
+    function switchSystem(systemId) {
+      if (!SYSTEM_IDS.includes(systemId) || systemId === activeSystemId) return;
+      activeSystemId = systemId;
+      localStorage.setItem("telegramDashboardSystemId", activeSystemId);
+      pendingAccountId = "";
+      renderSystemTabs();
+      updateDownloadLinks();
+      setStatus(accountStatusEl, `โหลดบัญชีของระบบ ${activeSystemId}...`, "warn");
+      setStatus(intakeSummaryEl, `โหลดไฟล์ของระบบ ${activeSystemId}...`, "warn");
+      setStatus(jobStatusEl, `โหลดคิวของระบบ ${activeSystemId}...`, "warn");
+      renderRows([]);
+      renderSummary(null);
+      refreshAll().catch((error) => setStatus(summaryEl, error.message || "โหลดระบบไม่สำเร็จ", "bad"));
+    }
+
+    systemTabsEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-system-id]");
+      if (button) switchSystem(button.dataset.systemId);
+    });
+
+    systemMiniCardsEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-system-id]");
+      if (button) switchSystem(button.dataset.systemId);
+    });
+
     (async () => {
+      if (!SYSTEM_IDS.includes(activeSystemId)) activeSystemId = "A";
+      renderSystemTabs();
+      updateDownloadLinks();
       await refreshAll();
       startDashboardPolling();
     })().catch((error) => {
