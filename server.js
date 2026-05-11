@@ -1745,13 +1745,14 @@ function buildAlerts(job, latestMeta, settings, runLog = [], notices = []) {
 
 async function buildDashboardPayload() {
   const recoveryNotices = getRecoveryNotices();
-  const [settings, job, latestMeta, runLog, accountsState] = await Promise.all([
+  const [settings, job, latestBatch, runLog, accountsState] = await Promise.all([
     loadSettings(),
     getCurrentJob(),
-    readLatestMeta(),
+    readJson(FILES.latestJson, null),
     readJson(FILES.runLog, []),
     loadAccountsState(),
   ]);
+  const latestMeta = latestBatch?.meta || null;
   const allRows = await readJson(FILES.allJson, []);
   const segmentation = buildSegmentationSummary(allRows);
   const appState = accountsState?.appState || {};
@@ -1786,6 +1787,7 @@ async function buildDashboardPayload() {
       progressPct,
     } : null,
     latestMeta,
+    latestBatch,
     cards: {
       done: Number(job?.processedRows || 0),
       remaining: Number(job?.remainingRows || 0),

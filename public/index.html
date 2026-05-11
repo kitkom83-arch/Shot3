@@ -1405,9 +1405,9 @@
 
     async function loadJobStatus(systemId = activeSystemId) {
       try {
-        const data = await fetchJson(`${apiBase(systemId)}/job/status`);
+        const data = await fetchJson(`${apiBase(systemId)}/status`);
         if (!isActiveSystem(systemId)) return;
-        renderJob(data);
+        renderJob(data.job || data);
       } catch {
         if (!isActiveSystem(systemId)) return;
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
@@ -1416,10 +1416,11 @@
 
     async function loadLatest(systemId = activeSystemId) {
       try {
-        const data = await fetchJson(`${apiBase(systemId)}/latest`);
+        const data = await fetchJson(`${apiBase(systemId)}/dashboard`);
         if (!isActiveSystem(systemId)) return;
-        renderSummary(data);
-        renderRows(data.rows || []);
+        const latest = data.latestBatch || (data.latestMeta ? { meta: data.latestMeta, rows: [] } : null);
+        renderSummary(latest);
+        renderRows(latest?.rows || []);
       } catch {
         if (!isActiveSystem(systemId)) return;
         renderSummary(null);
