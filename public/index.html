@@ -1403,11 +1403,32 @@
       }
     }
 
+    function extractJobPayload(data) {
+      const hasJobKey = data && typeof data === "object" && Object.prototype.hasOwnProperty.call(data, "job");
+      return hasJobKey ? data.job : data;
+    }
+
+    function extractLatestPayload(data) {
+      return data?.latestBatch || (data?.latestMeta ? { meta: data.latestMeta, rows: [] } : null);
+    }
+
+    async function fetchSystemDashboard(systemId = activeSystemId) {
+      return fetchJson(`${apiBase(systemId)}/dashboard`);
+    }
+
+    function renderDashboardPayload(data) {
+      const latest = extractLatestPayload(data);
+      renderJob(extractJobPayload(data));
+      renderSummary(latest);
+      renderRows(latest?.rows || []);
+      renderDashboard(data);
+    }
+
     async function loadJobStatus(systemId = activeSystemId) {
       try {
         const data = await fetchJson(`${apiBase(systemId)}/status`);
         if (!isActiveSystem(systemId)) return;
-        renderJob(data.job || data);
+        renderJob(extractJobPayload(data));
       } catch {
         if (!isActiveSystem(systemId)) return;
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
@@ -1416,9 +1437,9 @@
 
     async function loadLatest(systemId = activeSystemId) {
       try {
-        const data = await fetchJson(`${apiBase(systemId)}/dashboard`);
+        const data = await fetchSystemDashboard(systemId);
         if (!isActiveSystem(systemId)) return;
-        const latest = data.latestBatch || (data.latestMeta ? { meta: data.latestMeta, rows: [] } : null);
+        const latest = extractLatestPayload(data);
         renderSummary(latest);
         renderRows(latest?.rows || []);
       } catch {
@@ -1430,9 +1451,9 @@
 
     async function loadDashboard(systemId = activeSystemId) {
       try {
-        const data = await fetchJson(`${apiBase(systemId)}/dashboard`);
+        const data = await fetchSystemDashboard(systemId);
         if (!isActiveSystem(systemId)) return;
-        renderDashboard(data);
+        renderDashboardPayload(data);
       } catch (error) {
         if (!isActiveSystem(systemId)) return;
         reportBoardEl.textContent = error.message || 'โหลด dashboard ไม่สำเร็จ';
@@ -1448,8 +1469,6 @@
         loadAutoStatus(systemId),
         loadIntakeLatest(systemId),
         loadAccounts(systemId),
-        loadJobStatus(systemId),
-        loadLatest(systemId),
         loadDashboard(systemId),
         loadSystemsSummary(),
       ]);
