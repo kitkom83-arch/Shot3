@@ -16,3 +16,9 @@ server_test*
 *.err
 *.pid
 .env
+
+backup_before_*/
+backup_*/
+*.log
+tmp_*
+server_test*
