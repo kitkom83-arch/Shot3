@@ -119,7 +119,7 @@
     .small { font-size:12px; color:var(--muted); }
     .auto-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; }
     .live-wrap { display:grid; gap:18px; margin-bottom:18px; }
-    .cards-grid { display:grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap:12px; }
+    .cards-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; }
     .metric-card { padding:14px; border-radius:18px; background: #222222; border:1px solid rgba(255,255,255,.12); min-width:0; }
     .metric-card .label { font-size:12px; color:var(--muted); margin-bottom:8px; }
     .metric-card .value { font-size:28px; font-weight:800; letter-spacing:-.04em; color:var(--heading); }
@@ -137,6 +137,34 @@
     .board-line strong { color: var(--muted); font-weight:700; }
     .countdown { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:16px; background: #222222; border:1px solid rgba(255,255,255,.12); }
     .countdown .time { font-size:32px; font-weight:900; letter-spacing:-.05em; color:var(--heading); }
+    .next-run-panel {
+      margin-top:12px;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#222222;
+      display:grid;
+      gap:10px;
+    }
+    .next-run-panel .panel-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .next-run-inline { display:flex; align-items:center; gap:8px; min-width:0; }
+    .next-run-title { margin:0; font-size:18px; color:var(--heading); }
+    .next-run-state { font-weight:900; color:var(--heading); }
+    .next-run-time { font-size:36px; line-height:1; font-weight:900; color:var(--heading); letter-spacing:0; }
+    .next-run-meta { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+    .next-run-meta div { min-width:0; padding:8px 10px; border-radius:10px; background:#2A2A2A; border:1px solid rgba(255,255,255,.1); }
+    .next-run-meta span { display:block; color:var(--muted); font-size:11px; margin-bottom:3px; }
+    .next-run-meta strong { color:var(--heading); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+    .wait-spinner {
+      width:18px;
+      height:18px;
+      border-radius:999px;
+      border:3px solid rgba(255,255,255,.18);
+      border-top-color:var(--accent-2);
+      animation:spin 1s linear infinite;
+    }
+    .wait-spinner.hidden { display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
     .progress-shell { width:100%; height:12px; border-radius:999px; background: rgba(255,255,255,.06); overflow:hidden; border:1px solid rgba(255,255,255,.12); }
     .progress-fill { height:100%; width:0%; background: linear-gradient(90deg, var(--accent), var(--ok)); transition: width .35s ease; }
     .timeline-grid { display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
@@ -263,7 +291,7 @@
     .system-mini-card.active { box-shadow:inset 3px 0 0 rgba(240,141,35,.75); }
     .system-mini-card .top { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:5px; }
     .system-mini-card .name { font-weight:800; color:var(--heading); }
-    .system-mini-card .metrics { display:grid; grid-template-columns:repeat(5, 1fr); gap:4px; font-size:11px; color:var(--muted); }
+    .system-mini-card .metrics { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; font-size:11px; color:var(--muted); }
     .system-mini-card .metrics strong { display:block; color:var(--heading); font-size:13px; }
 
 
@@ -317,7 +345,7 @@
     .pill { min-height:22px; padding:0 8px; font-size:11px; }
     code { padding:2px 5px; border-radius:7px; }
     .grid-2, .auto-grid, .board-grid, .timeline-grid, .subgrid-2 { gap:10px; }
-    .cards-grid { grid-template-columns:repeat(6, minmax(100px, 1fr)); gap:8px; }
+    .cards-grid { grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:8px; }
     .metric-card { padding:8px 10px; border-radius:10px; }
     .metric-card .label { margin-bottom:3px; font-size:11px; }
     .metric-card .value { font-size:20px; letter-spacing:0; }
@@ -353,21 +381,104 @@
       .system-mini-grid { grid-template-columns:repeat(2, minmax(150px, 1fr)); }
     }
 
+    /* One Screen Correct Flow */
+    .flow-header { align-items:stretch; }
+    .flow-header .chip-row { flex:1; align-items:center; }
+    .status-badge.ready, .system-tab.ready { border-color:rgba(55,200,113,.38); color:#9cf7bd; }
+    .status-badge.connected, .system-tab.connected { border-color:rgba(240,141,35,.42); color:#fff; }
+    .status-badge.warning, .system-tab.warning { border-color:rgba(246,191,79,.42); color:#ffd77c; }
+    .status-badge.error, .system-tab.error { border-color:rgba(239,91,91,.44); color:#ffb6bf; }
+    .status-badge { font-weight:900; letter-spacing:.04em; }
+    .system-tabs { display:grid; grid-template-columns:repeat(5, minmax(90px, 1fr)); }
+    .system-tab { justify-content:space-between; gap:8px; min-height:42px; }
+    .system-tab .tab-status { font-size:11px; font-weight:900; opacity:.95; }
+    .system-mini-grid { display:none; }
+    .flow-grid {
+      display:grid;
+      grid-template-columns: minmax(220px, .7fr) minmax(360px, 1.15fr) minmax(330px, .95fr);
+      gap:10px;
+      align-items:start;
+    }
+    .flow-span-2 { grid-column:span 2; }
+    .flow-card { min-height:100%; }
+    .step-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; }
+    .step-item {
+      display:grid;
+      grid-template-columns:26px 1fr auto;
+      align-items:center;
+      gap:8px;
+      min-height:38px;
+      padding:7px 8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background:#222222;
+    }
+    .step-mark { width:22px; height:22px; display:grid; place-items:center; border-radius:999px; font-weight:900; }
+    .step-item.done .step-mark { color:#87f5b3; background:rgba(55,200,113,.14); }
+    .step-item.wait .step-mark { color:var(--muted); background:rgba(255,255,255,.07); }
+    .step-item.warn .step-mark { color:#ffd77c; background:rgba(246,191,79,.16); }
+    .step-title { color:var(--heading); font-weight:800; }
+    .step-note { color:var(--muted); font-size:11px; }
+    .status-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+    .status-cell {
+      min-width:0;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background:#222222;
+    }
+    .status-cell .label { color:var(--muted); font-size:11px; margin-bottom:4px; }
+    .status-cell .value { color:var(--heading); font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .single-action {
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) auto;
+      gap:8px;
+      align-items:end;
+    }
+    .primary-action { min-height:52px; font-size:16px; }
+    .flow-upload { display:grid; gap:8px; }
+    .flow-upload .row > * { min-width:120px; }
+    .results-strip { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:8px; margin-bottom:8px; }
+    .result-tile { padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#222222; }
+    .result-tile .label { font-size:11px; color:var(--muted); }
+    .result-tile .value { margin-top:2px; font-size:22px; color:var(--heading); font-weight:900; }
+    .download-row { display:grid; grid-template-columns:repeat(6, minmax(120px, 1fr)); gap:8px; }
+    .danger-zone { border-color:rgba(239,91,91,.28); background:rgba(61,18,25,.34); }
+    .danger-zone summary { color:#ffcad1; }
+    .danger-actions { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-top:8px; }
+    .account-panel details.advanced { background:#222222; }
+    .legacy-hidden { display:none !important; }
+    @media (max-width: 1180px) {
+      .flow-grid { grid-template-columns:1fr; }
+      .flow-span-2 { grid-column:auto; }
+      .status-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .single-action, .download-row { grid-template-columns:1fr; }
+    }
+    @media (max-width: 720px) {
+      .system-tabs, .status-grid, .results-strip { grid-template-columns:1fr; }
+      .next-run-meta { grid-template-columns:1fr; }
+      .flow-header .chip-row { width:100%; }
+      .chip { width:100%; justify-content:space-between; }
+    }
+
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="topbar">
+    <header class="topbar flow-header">
       <div class="brand">
         <div class="brand-badge">T</div>
         <div>
-          <h1>Telegram All-in-One Dashboard</h1>
-          <p>Cleaner + Checker + Auto Queue ในเว็บเดียว</p>
+          <h1>Telegram Checker Dashboard</h1>
+          <p>One Screen Correct Flow</p>
         </div>
       </div>
       <div class="chip-row">
-        <div class="chip"><strong>CSV</strong> name,phone</div>
-        <div class="chip"><strong>สถานะ</strong> YES / NO / RETRY</div>
+        <div class="chip"><strong>System</strong> <span id="headerSystem">A</span></div>
+        <div class="chip"><strong>Account</strong> <span id="headerAccount">-</span></div>
+        <div class="chip"><strong>Status</strong> <span id="headerQueueStatus">IDLE</span></div>
+        <div class="chip"><strong>Auto</strong> <span id="headerAuto">OFF</span></div>
+        <div id="readinessBadge" class="chip status-badge warning">WARNING</div>
         <button id="logoutBtn" type="button" class="ghost">ออกจากระบบ</button>
       </div>
     </header>
@@ -385,99 +496,125 @@
       </div>
     </section>
 
-    <section class="hero">
-      <div class="hero-grid">
-        <div>
-          <h2>ล้างไฟล์, ตั้งค่าออโต้, แล้วค่อยรันในหน้าเดียว</h2>
-          <p>อัปโหลดไฟล์หลายแบบ, สร้าง clean_ready.csv อัตโนมัติ, เลือกบัญชี Telegram, ล็อกคิวให้บัญชีเดียว, ตั้งค่ารันออโต้, และดูผลแบบ YES / NO / RETRY ชัดเจน</p>
-          <div class="hero-note">ไฟล์พร้อมใช้ของ checker จะเป็น <code>clean_ready.csv</code></div>
-          <div class="legend">
-            <span class="pill connected">CONNECTED</span>
-            <span class="pill yes">YES</span>
-            <span class="pill no">NO</span>
-            <span class="pill pending">RETRY</span>
-          </div>
-        </div>
-        <div class="stack">
-          <div class="mini-stat">
-            <div class="label">โหมดใช้งาน</div>
-            <div class="value">All-in-One</div>
-          </div>
-          <div class="mini-stat">
-            <div class="label">แนวทาง</div>
-            <div class="value">Cleaner + Queue</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <div class="sections">
-      <section class="card section-card">
+    <main class="flow-grid">
+      <section class="card flow-card">
         <div class="card-header">
           <div>
-            <h2 class="section-title">1) บัญชี Telegram</h2>
-            <p class="section-subtitle">เพิ่มบัญชี, ส่ง OTP, ยืนยัน OTP/2FA และจัดการ session ในบล็อกเดียว</p>
+            <h2 class="section-title">Step Panel</h2>
+            <p class="section-subtitle">ทำตามลำดับจากบนลงล่าง</p>
           </div>
         </div>
+        <ol id="stepPanel" class="step-list">
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">เลือกระบบ</span><span class="step-note">A</span></li>
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">เลือกบัญชี Telegram</span><span class="step-note">-</span></li>
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">อัปโหลดไฟล์</span><span class="step-note">clean_ready.csv</span></li>
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">สร้างคิว</span><span class="step-note">job</span></li>
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">ตรวจ 1 รอบ</span><span class="step-note">run-next</span></li>
+          <li class="step-item wait"><span class="step-mark">○</span><span class="step-title">ดาวน์โหลดผล</span><span class="step-note">CSV</span></li>
+        </ol>
+      </section>
 
-        <form id="accountForm">
+      <section class="card flow-card flow-span-2">
+        <div class="card-header">
+          <div>
+            <h2 class="section-title">Current Status Board</h2>
+            <p class="section-subtitle">เห็นทันทีว่า system, account, clean_ready.csv, job และ run-next พร้อมหรือไม่</p>
+          </div>
+        </div>
+        <div id="statusBoard" class="status-grid">
+          <div class="status-cell"><div class="label">systemId</div><div class="value" data-board-field="systemId">A</div></div>
+          <div class="status-cell"><div class="label">selectedAccountLabel</div><div class="value" data-board-field="selectedAccountLabel">-</div></div>
+          <div class="status-cell"><div class="label">account status</div><div class="value" data-board-field="accountStatus">-</div></div>
+          <div class="status-cell"><div class="label">hasSession</div><div class="value" data-board-field="hasSession">false</div></div>
+          <div class="status-cell"><div class="label">cleanReadyPath</div><div class="value" data-board-field="cleanReadyPath">-</div></div>
+          <div class="status-cell"><div class="label">cleanReadyExists</div><div class="value" data-board-field="cleanReadyExists">false</div></div>
+          <div class="status-cell"><div class="label">readyRows</div><div class="value" data-board-field="readyRows">0</div></div>
+          <div class="status-cell"><div class="label">jobId</div><div class="value" data-board-field="jobId">-</div></div>
+          <div class="status-cell"><div class="label">totalRows</div><div class="value" data-board-field="totalRows">0</div></div>
+          <div class="status-cell"><div class="label">processedRows</div><div class="value" data-board-field="processedRows">0</div></div>
+          <div class="status-cell"><div class="label">remainingRows</div><div class="value" data-board-field="remainingRows">0</div></div>
+          <div class="status-cell"><div class="label">status</div><div class="value" data-board-field="status">IDLE</div></div>
+          <div class="status-cell"><div class="label">autoRun</div><div class="value" data-board-field="autoRun">false</div></div>
+          <div class="status-cell"><div class="label">perRun</div><div class="value" data-board-field="perRun">20</div></div>
+          <div class="status-cell"><div class="label">chunkSize</div><div class="value" data-board-field="chunkSize">1</div></div>
+        </div>
+        <div id="nextRunPanel" class="next-run-panel" aria-live="polite">
+          <div class="panel-top">
+            <h2 class="next-run-title">ตัวนับรอบถัดไป</h2>
+            <div class="next-run-inline">
+              <span id="nextRunSpinner" class="wait-spinner hidden" aria-hidden="true"></span>
+              <span id="nextRunState" class="next-run-state">Auto OFF</span>
+            </div>
+          </div>
+          <div id="nextRunCountdown" class="next-run-time">--:--</div>
+          <div id="nextRunMessage" class="small">ใช้ปุ่ม ตรวจ 1 รอบ เพื่อรันแบบมือ</div>
+          <div class="next-run-meta">
+            <div><span>เวลารันถัดไป</span><strong id="nextRunClock">-</strong></div>
+            <div><span>processedRows</span><strong id="nextRunProcessed">0</strong></div>
+            <div><span>remainingRows</span><strong id="nextRunRemaining">0</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card flow-card">
+        <div class="card-header">
+          <div>
+            <h2 class="section-title">Action Area</h2>
+            <p class="section-subtitle">ปุ่มหลักมีแค่ปุ่มเดียวตามสถานะปัจจุบัน</p>
+          </div>
+        </div>
+        <form id="intakeForm" class="flow-upload">
+          <div>
+            <label>ไฟล์สำหรับสร้าง clean_ready.csv</label>
+            <input id="intakeFile" type="file" accept=".csv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods" />
+          </div>
           <div class="row">
             <div>
-              <label>ชื่อบัญชี</label>
-              <input id="accountLabel" placeholder="เช่น บัญชี A" required />
+              <label>ชื่องาน</label>
+              <input id="jobLabelInput" placeholder="ไม่บังคับ" />
             </div>
             <div>
-              <label>API_ID</label>
-              <input id="accountApiId" placeholder="12345678" required />
-            </div>
-            <div>
-              <label>API_HASH</label>
-              <input id="accountApiHash" placeholder="ใส่ API_HASH" required />
-            </div>
-            <div>
-              <label>PHONE</label>
-              <input id="accountPhone" placeholder="+66xxxxxxxxx หรือ 08xxxxxxxx" required />
+              <label>หมายเหตุ</label>
+              <input id="jobNoteInput" placeholder="ไม่บังคับ" />
             </div>
           </div>
-          <div class="action-stack">
-            <button type="submit">เพิ่มบัญชี</button>
-          </div>
+          <button id="uploadSubmitBtn" class="legacy-hidden" type="submit">อัปโหลดไฟล์</button>
         </form>
-        <div id="accountStatus" class="status" style="margin-top:12px;">พร้อมเพิ่มบัญชี</div>
-
-        <div class="subgrid-2" style="margin-top:14px;">
-          <div>
-            <div id="pendingInfo" class="status">ยังไม่มีบัญชีที่รอยืนยัน</div>
-            <div class="row" style="margin-top:8px;">
-              <div>
-                <label>OTP</label>
-                <input id="otpCode" placeholder="ใส่ OTP จาก Telegram" />
-              </div>
-              <div>
-                <label>รหัส 2FA</label>
-                <input id="twoFaPassword" type="password" placeholder="ใส่เมื่อระบบแจ้งว่าต้องใช้ 2FA" />
-              </div>
-            </div>
-            <div class="action-stack">
-              <button id="verifyOtpBtn" class="info" type="button">ยืนยัน OTP</button>
-              <button id="verifyPasswordBtn" class="ghost" type="button">ยืนยัน 2FA</button>
-            </div>
-          </div>
-
-          <details class="advanced">
-            <summary>รายละเอียดบัญชี / วิธีใช้</summary>
-            <div class="advanced-body status">
-              การใช้งานบัญชี:
-              1) เพิ่มบัญชี
-              2) กดส่ง OTP จากแถวบัญชี
-              3) ยืนยัน OTP / 2FA
-              4) กดใช้บัญชีนี้
-              5) ถ้าบัญชีค้าง ให้กดรีล็อกอินบัญชีหรือล้าง session บัญชี
-            </div>
-          </details>
+        <div class="single-action" style="margin-top:10px;">
+          <div id="mainActionHint" class="status">กำลังตรวจสถานะ...</div>
+          <button id="mainActionBtn" class="primary-action" type="button">โหลดสถานะ</button>
+          <button id="createJobBtn" class="legacy-hidden" type="button">สร้างคิว</button>
+          <button id="runNextBtn" class="legacy-hidden" type="button">ตรวจ 1 รอบ</button>
+          <button id="refreshJobBtn" class="legacy-hidden" type="button">รีเฟรช</button>
         </div>
+        <div id="intakeStatus" class="status" style="margin-top:8px;">พร้อมรับไฟล์</div>
+        <div id="intakeSummary" class="status legacy-hidden">ยังไม่มีผลล้างไฟล์</div>
+        <div id="latestWork" class="status legacy-hidden">ยังไม่มีงานล่าสุด/งานค้าง</div>
+        <div id="jobStatus" class="status legacy-hidden">ยังไม่มีคิวงาน</div>
+      </section>
 
-        <div class="table-shell" style="margin-top:14px;">
+      <section class="card flow-card account-panel flow-span-2" id="accountPanel">
+        <div class="card-header">
+          <div>
+            <h2 class="section-title">Telegram Account</h2>
+            <p class="section-subtitle">เลือกบัญชีที่มี session พร้อมใช้งาน ก่อนสร้างคิวหรือรันงาน</p>
+          </div>
+        </div>
+        <div id="accountStatus" class="status">พร้อมเลือกบัญชี</div>
+        <div id="pendingInfo" class="status" style="margin-top:8px;">ยังไม่มีบัญชีที่รอยืนยัน</div>
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label>OTP</label>
+            <input id="otpCode" placeholder="ใส่ OTP จาก Telegram" />
+          </div>
+          <div>
+            <label>รหัส 2FA</label>
+            <input id="twoFaPassword" type="password" placeholder="ใส่เมื่อระบบแจ้งว่าต้องใช้ 2FA" />
+          </div>
+          <button id="verifyOtpBtn" class="info" type="button">ยืนยัน OTP</button>
+          <button id="verifyPasswordBtn" class="ghost" type="button">ยืนยัน 2FA</button>
+        </div>
+        <div class="table-shell" style="margin-top:10px;">
           <div class="table-scroll">
             <table>
               <thead>
@@ -496,77 +633,113 @@
             </table>
           </div>
         </div>
-      </section>
-
-      <section class="card section-card">
-        <div class="card-header">
-          <div>
-            <h2 class="section-title">2) ล้างไฟล์</h2>
-            <p class="section-subtitle">อัปโหลดไฟล์แล้วแปลงเป็น clean_ready.csv ก่อนสร้างคิว</p>
-          </div>
-        </div>
-        <form id="intakeForm">
-          <div class="row">
-            <div>
-              <label>เลือกไฟล์</label>
-              <input id="intakeFile" type="file" accept=".csv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods" required />
-            </div>
-          </div>
-          <div class="row" style="margin-top:12px;">
-            <div>
-              <label>ชื่องาน (jobLabel)</label>
-              <input id="jobLabelInput" placeholder="เช่น 2026-04-Campaign-A (ถ้าไม่ใส่จะใช้ชื่อไฟล์)" />
-            </div>
-            <div>
-              <label>หมายเหตุงาน (jobNote)</label>
-              <input id="jobNoteInput" placeholder="ไม่บังคับ" />
-            </div>
-          </div>
-          <div class="action-stack">
-            <button type="submit">อัปโหลดไฟล์</button>
-          </div>
-        </form>
-        <div id="intakeStatus" class="status" style="margin-top:12px;">พร้อมรับไฟล์</div>
-        <div id="intakeSummary" class="status" style="margin-top:12px;">ยังไม่มีผลล้างไฟล์</div>
         <details class="advanced">
-          <summary>download buttons</summary>
-          <div class="downloads-grid">
-            <a class="btn ghost" data-download-name="clean_ready.csv" href="/download/clean_ready.csv" target="_blank">โหลด clean_ready.csv</a>
-            <a class="btn ghost" data-download-name="invalid_rows.csv" href="/download/invalid_rows.csv" target="_blank">โหลด invalid_rows.csv</a>
-            <a class="btn ghost" data-download-name="duplicate_phones.csv" href="/download/duplicate_phones.csv" target="_blank">โหลด duplicate_phones.csv</a>
-            <a class="btn ghost" data-download-name="summary.json" href="/download/summary.json" target="_blank">โหลด summary.json</a>
-          </div>
+          <summary>เพิ่มบัญชี Telegram</summary>
+          <form id="accountForm" class="advanced-body">
+            <div class="row">
+              <div>
+                <label>ชื่อบัญชี</label>
+                <input id="accountLabel" placeholder="เช่น บัญชี A" required />
+              </div>
+              <div>
+                <label>API_ID</label>
+                <input id="accountApiId" placeholder="12345678" required />
+              </div>
+              <div>
+                <label>API_HASH</label>
+                <input id="accountApiHash" placeholder="ใส่ API_HASH" required />
+              </div>
+              <div>
+                <label>PHONE</label>
+                <input id="accountPhone" placeholder="+66xxxxxxxxx หรือ 08xxxxxxxx" required />
+              </div>
+            </div>
+            <button type="submit">เพิ่มบัญชี</button>
+          </form>
         </details>
       </section>
 
-      <section class="card section-card">
+      <section class="card flow-card flow-span-2">
         <div class="card-header">
           <div>
-            <h2 class="section-title">3) คิวงาน</h2>
-            <p class="section-subtitle">สร้างคิวจาก clean_ready.csv แล้วค่อยทำรอบถัดไป</p>
+            <h2 class="section-title">Results Area</h2>
+            <p class="section-subtitle">YES / NO / RETRY และไฟล์ผลลัพธ์ที่ดาวน์โหลดได้</p>
+          </div>
+          <div class="small" id="lastUpdatedText">อัปเดตล่าสุด: -</div>
+        </div>
+        <div class="results-strip">
+          <div class="result-tile"><div class="label">YES</div><div id="resultYes" class="value">0</div></div>
+          <div class="result-tile"><div class="label">NO</div><div id="resultNo" class="value">0</div></div>
+          <div class="result-tile"><div class="label">RETRY</div><div id="resultRetry" class="value">0</div></div>
+          <div class="result-tile"><div class="label">processedRows</div><div id="resultProcessed" class="value">0</div></div>
+          <div class="result-tile"><div class="label">remainingRows</div><div id="resultRemaining" class="value">0</div></div>
+        </div>
+        <div class="download-row">
+          <button id="downloadProcessedCsvBtn" class="info" type="button">processed</button>
+          <button id="downloadRemainingCsvBtn" class="info" type="button">remaining</button>
+          <button id="downloadYesOnlyBtn" class="ghost" type="button">yes_only</button>
+          <button id="downloadNoOnlyBtn" class="ghost" type="button">no_only</button>
+          <button id="downloadRetryOnlyBtn" class="ghost" type="button">retry_only</button>
+          <button id="downloadRunLogBtn" class="ghost" type="button">run_log</button>
+        </div>
+        <div id="summary" class="status" style="margin-top:8px;">ยังไม่มีผลล่าสุด</div>
+        <div id="segmentationSummary" class="status legacy-hidden">ยังไม่มีสรุป segmentation</div>
+        <div class="table-shell legacy-hidden" style="margin-top:12px;">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>sourceIndex</th>
+                  <th>name</th>
+                  <th>rawPhone</th>
+                  <th>normalizedPhone</th>
+                  <th>match</th>
+                  <th>telegramUserId</th>
+                  <th>telegramUsername</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody">
+                <tr><td colspan="7" class="small">ยังไม่มีข้อมูล</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div id="latestWork" class="status" style="margin-bottom:12px;">ยังไม่มีงานล่าสุด/งานค้าง</div>
-        <div id="jobStatus" class="status">ยังไม่มีคิวงาน</div>
-        <div class="action-stack">
-          <button id="createJobBtn" type="button">เริ่มตรวจ</button>
-          <button id="runNextBtn" class="info" type="button">ทำต่อจากค้าง</button>
-          <button id="refreshJobBtn" class="ghost" type="button">รีเฟรชสถานะ</button>
-          <button id="resetJobBtn" class="danger" type="button">เริ่มใหม่ทั้งหมด</button>
+        <div class="legacy-hidden">
+          <button id="downloadProcessedXlsxBtn" type="button">processed xlsx</button>
+          <button id="downloadRemainingXlsxBtn" type="button">remaining xlsx</button>
+          <button id="downloadAllResultsBtn" type="button">all</button>
+          <button id="downloadAllJsonBtn" type="button">all json</button>
+          <button id="downloadInvalidOnlyBtn" type="button">invalid</button>
+          <button id="downloadMarketingAllowedBtn" type="button">marketing</button>
+          <button id="downloadWinbackBtn" type="button">winback</button>
+          <button id="downloadRetryLaterBtn" type="button">retry later</button>
+          <a data-download-name="clean_ready.csv" href="/download/clean_ready.csv">clean_ready.csv</a>
+          <a data-download-name="invalid_rows.csv" href="/download/invalid_rows.csv">invalid_rows.csv</a>
+          <a data-download-name="duplicate_phones.csv" href="/download/duplicate_phones.csv">duplicate_phones.csv</a>
+          <a data-download-name="summary.json" href="/download/summary.json">summary.json</a>
+          <a data-download-name="retry_rows.csv" href="/download/retry_rows.csv">retry_rows.csv</a>
         </div>
       </section>
 
-      <section class="card section-card">
-        <div class="card-header">
-          <div>
-            <h2 class="section-title">4) ตั้งค่าอัตโนมัติ</h2>
-            <p class="section-subtitle">โหมดขั้นสูงสำหรับปรับ Auto Queue</p>
-          </div>
-        </div>
-
-        <details class="advanced">
-          <summary>เปิดการตั้งค่าขั้นสูง</summary>
+      <section class="card flow-card">
+        <details class="advanced danger-zone">
+          <summary>Danger Zone - ใช้เมื่อจำเป็นเท่านั้น</summary>
           <div class="advanced-body">
+            <div class="status">ปุ่มในส่วนนี้อาจล้างคิว, flood state หรือ session Telegram ใช้เมื่อจำเป็นเท่านั้น</div>
+            <div class="danger-actions">
+              <button id="resumeManualBtn" class="ghost legacy-hidden" type="button">ปลดพักเพื่อรันมือ</button>
+              <button id="resetJobBtn" class="danger" type="button">reset job</button>
+              <button id="resetFloodBtn" class="danger" type="button">reset flood</button>
+              <button id="dangerResetSessionBtn" class="danger" type="button">reset session</button>
+              <button id="dangerReloginBtn" class="danger" type="button">relogin</button>
+              <button id="clearStaleJobBtn" class="ghost" type="button">ล้าง stale job</button>
+            </div>
+          </div>
+        </details>
+        <details class="advanced">
+          <summary>Advanced Settings / Auto Queue</summary>
+          <div class="advanced-body">
+            <div class="status">Auto default OFF, perRun=20, chunkSize=1</div>
             <form id="settingsForm">
               <div class="row">
                 <div>
@@ -610,112 +783,28 @@
               </div>
               <div class="action-stack">
                 <button type="submit">บันทึกค่า</button>
-                <button id="startAutoBtn" class="info" type="button">เริ่มออโต้</button>
+                <button id="startAutoBtn" class="ghost" type="button">เริ่มออโต้</button>
                 <button id="pauseAutoBtn" class="ghost" type="button">หยุดชั่วคราว</button>
                 <button id="resumeAutoBtn" class="ghost" type="button">ทำต่อออโต้</button>
-                <button id="resetFloodBtn" class="ghost" type="button">รีเซ็ต Flood State</button>
               </div>
             </form>
             <div id="settingsStatus" class="status">กำลังโหลดค่า...</div>
             <div id="autoStatus" class="status">กำลังโหลด...</div>
           </div>
         </details>
-      </section>
-
-      <section class="card section-card">
-        <div class="card-header">
-          <div>
-            <h2 class="section-title">5) ผลลัพธ์</h2>
-            <p class="section-subtitle">ดูผลล่าสุด, ตารางผล, และดาวน์โหลดไฟล์ทั้งหมด</p>
-          </div>
-          <div class="small" id="lastUpdatedText">อัปเดตล่าสุด: -</div>
+        <div class="legacy-hidden">
+          <div id="alertPanel"></div>
+          <div id="liveCards"></div>
+          <div id="reportBoard"></div>
+          <div id="eventTimeline"></div>
+          <div id="countdownText">--:--</div>
+          <div id="countdownHint"></div>
+          <div id="progressFill"></div>
+          <div id="progressText"></div>
+          <div id="liveNotes"></div>
         </div>
-
-        <div id="summary" class="status">ยังไม่มีผลล่าสุด</div>
-        <div id="segmentationSummary" class="status">ยังไม่มีสรุป segmentation</div>
-
-        <details class="advanced">
-          <summary>download buttons</summary>
-          <div class="downloads-grid">
-            <button id="downloadProcessedCsvBtn" class="info" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (CSV)</button>
-            <button id="downloadProcessedXlsxBtn" class="ghost" type="button">ดาวน์โหลดผลที่ทำเสร็จแล้ว (XLSX)</button>
-            <button id="downloadRemainingCsvBtn" class="info" type="button">ดาวน์โหลดไฟล์ที่เหลือ (CSV)</button>
-            <button id="downloadRemainingXlsxBtn" class="ghost" type="button">ดาวน์โหลดไฟล์ที่เหลือ (XLSX)</button>
-            <button id="downloadRunLogBtn" class="ghost" type="button">ดาวน์โหลดบันทึกการทำงาน</button>
-            <button id="downloadAllResultsBtn" class="ghost" type="button">ดาวน์โหลดผลทั้งหมด</button>
-            <button id="downloadYesOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram YES</button>
-            <button id="downloadNoOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram NO</button>
-            <button id="downloadRetryOnlyBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Telegram RETRY</button>
-            <button id="downloadMarketingAllowedBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Marketing Allowed</button>
-            <button id="downloadWinbackBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Winback</button>
-            <button id="downloadRetryLaterBtn" class="ghost" type="button">ดาวน์โหลดเฉพาะ Retry Later</button>
-            <a class="btn ghost" data-download-name="retry_rows.csv" href="/download/retry_rows.csv" target="_blank">retry_rows.csv</a>
-          </div>
-        </details>
-
-        <div class="table-shell" style="margin-top:12px;">
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>sourceIndex</th>
-                  <th>name</th>
-                  <th>rawPhone</th>
-                  <th>normalizedPhone</th>
-                  <th>match</th>
-                  <th>telegramUserId</th>
-                  <th>telegramUsername</th>
-                </tr>
-              </thead>
-              <tbody id="resultsBody">
-                <tr><td colspan="7" class="small">ยังไม่มีข้อมูล</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <details class="advanced" style="margin-top:14px;">
-          <summary>มอนิเตอร์สด</summary>
-          <div class="advanced-body">
-            <div id="alertPanel" class="alert-stack">
-              <div class="alert-box info">กำลังโหลด alert...</div>
-            </div>
-            <div class="cards-grid" id="liveCards">
-              <div class="metric-card"><div class="label">ทำแล้ว</div><div class="value">0</div></div>
-            </div>
-            <div class="board-grid">
-              <div class="digital-board">
-                <div class="countdown">
-                  <div>
-                    <div class="small">เวลารอรอบถัดไป</div>
-                    <div class="time" id="countdownText">--:--</div>
-                  </div>
-                  <div class="small" id="countdownHint">ยังไม่มีเวลารอ</div>
-                </div>
-                <div>
-                  <div class="small" style="margin-bottom:8px;">ความคืบหน้ารวม</div>
-                  <div class="progress-shell"><div id="progressFill" class="progress-fill"></div></div>
-                  <div class="small" id="progressText" style="margin-top:8px;">0%</div>
-                </div>
-              </div>
-              <div class="status report-box" id="reportBoard">กำลังโหลด digital report...</div>
-            </div>
-            <div class="timeline-grid">
-              <div>
-                <div class="small" style="margin-bottom:8px;">เหตุการณ์ล่าสุด</div>
-                <div class="timeline-list" id="eventTimeline">
-                  <div class="timeline-item"><div class="when">-</div><div>กำลังโหลด...</div></div>
-                </div>
-              </div>
-              <div>
-                <div class="small" style="margin-bottom:8px;">หมายเหตุระบบ</div>
-                <div class="status report-box" id="liveNotes">Polling ทุก 5 วินาที • ถ้าจอไม่เปลี่ยน ระบบจะดึงสถานะใหม่เองให้</div>
-              </div>
-            </div>
-          </div>
-        </details>
       </section>
-    </div>
+    </main>
   </div>
 
 
@@ -782,20 +871,46 @@
     const resumeAutoBtnEl = document.getElementById("resumeAutoBtn");
     const startAutoBtnEl = document.getElementById("startAutoBtn");
     const resetFloodBtnEl = document.getElementById("resetFloodBtn");
+    const clearStaleJobBtnEl = document.getElementById("clearStaleJobBtn");
     const downloadProcessedCsvBtnEl = document.getElementById("downloadProcessedCsvBtn");
     const downloadProcessedXlsxBtnEl = document.getElementById("downloadProcessedXlsxBtn");
     const downloadRemainingCsvBtnEl = document.getElementById("downloadRemainingCsvBtn");
     const downloadRemainingXlsxBtnEl = document.getElementById("downloadRemainingXlsxBtn");
     const downloadRunLogBtnEl = document.getElementById("downloadRunLogBtn");
     const downloadAllResultsBtnEl = document.getElementById("downloadAllResultsBtn");
+    const downloadAllJsonBtnEl = document.getElementById("downloadAllJsonBtn");
     const downloadYesOnlyBtnEl = document.getElementById("downloadYesOnlyBtn");
     const downloadNoOnlyBtnEl = document.getElementById("downloadNoOnlyBtn");
     const downloadRetryOnlyBtnEl = document.getElementById("downloadRetryOnlyBtn");
+    const downloadInvalidOnlyBtnEl = document.getElementById("downloadInvalidOnlyBtn");
     const downloadMarketingAllowedBtnEl = document.getElementById("downloadMarketingAllowedBtn");
     const downloadWinbackBtnEl = document.getElementById("downloadWinbackBtn");
     const downloadRetryLaterBtnEl = document.getElementById("downloadRetryLaterBtn");
     const systemTabsEl = document.getElementById("systemTabs");
     const systemMiniCardsEl = document.getElementById("systemMiniCards");
+    const headerSystemEl = document.getElementById("headerSystem");
+    const headerAccountEl = document.getElementById("headerAccount");
+    const headerQueueStatusEl = document.getElementById("headerQueueStatus");
+    const headerAutoEl = document.getElementById("headerAuto");
+    const readinessBadgeEl = document.getElementById("readinessBadge");
+    const stepPanelEl = document.getElementById("stepPanel");
+    const mainActionBtnEl = document.getElementById("mainActionBtn");
+    const mainActionHintEl = document.getElementById("mainActionHint");
+    const nextRunStateEl = document.getElementById("nextRunState");
+    const nextRunCountdownEl = document.getElementById("nextRunCountdown");
+    const nextRunClockEl = document.getElementById("nextRunClock");
+    const nextRunMessageEl = document.getElementById("nextRunMessage");
+    const nextRunProcessedEl = document.getElementById("nextRunProcessed");
+    const nextRunRemainingEl = document.getElementById("nextRunRemaining");
+    const nextRunSpinnerEl = document.getElementById("nextRunSpinner");
+    const resumeManualBtnEl = document.getElementById("resumeManualBtn");
+    const dangerResetSessionBtnEl = document.getElementById("dangerResetSessionBtn");
+    const dangerReloginBtnEl = document.getElementById("dangerReloginBtn");
+    const resultYesEl = document.getElementById("resultYes");
+    const resultNoEl = document.getElementById("resultNo");
+    const resultRetryEl = document.getElementById("resultRetry");
+    const resultProcessedEl = document.getElementById("resultProcessed");
+    const resultRemainingEl = document.getElementById("resultRemaining");
 
 
     const helpFabEl = document.getElementById("helpFab");
@@ -827,10 +942,24 @@
     let accountsCache = [];
     let dashboardPollTimer = null;
     let countdownTimer = null;
+    let nextRunIndicatorTimer = null;
+    let nextRunIndicatorState = null;
+    let runningStartedAtMs = 0;
+    let startAutoBlockedByStatus = false;
     let countdownSec = 0;
     let pendingAccountId = "";
     let activeSystemId = localStorage.getItem("telegramDashboardSystemId") || "A";
     const SYSTEM_IDS = ["A", "B", "C", "D", "E"];
+    const cleanReadyStateBySystem = new Map();
+    let systemsSummaryCache = [];
+    const uiState = {
+      settings: { autoRun: false, maxContactsPerRun: 20, batchSize: 1 },
+      auto: {},
+      dashboard: null,
+      job: null,
+      latest: null,
+      downloads: {},
+    };
 
     function apiBase(systemId = activeSystemId) {
       return `/api/systems/${encodeURIComponent(systemId)}`;
@@ -842,6 +971,16 @@
 
     function downloadUrl(name) {
       return `${apiBase()}/download/${encodeURIComponent(name)}`;
+    }
+
+    function rememberCleanReadyState(systemId, data = {}) {
+      cleanReadyStateBySystem.set(systemId, {
+        exists: Boolean(data.cleanReadyExists),
+        path: data.cleanReadyPath || data.expectedCleanReadyPath || "",
+        readyRows: Number(data.readyRows || 0),
+        invalidRows: Number(data.invalidRows || 0),
+        duplicateRows: Number(data.duplicateRows || 0),
+      });
     }
 
     function updateDownloadLinks() {
@@ -882,6 +1021,112 @@
       return dt.toLocaleString('th-TH');
     }
 
+    function formatTimeOnly(value) {
+      if (!value) return '-';
+      const dt = new Date(value);
+      if (!Number.isFinite(dt.getTime())) return '-';
+      return dt.toLocaleTimeString('th-TH', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function normalizeStatusKey(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function readRemainingSec(nextRunAt, fallbackSec = 0) {
+      if (nextRunAt) {
+        const ts = new Date(nextRunAt).getTime();
+        if (Number.isFinite(ts)) return Math.max(0, Math.ceil((ts - Date.now()) / 1000));
+      }
+      return Math.max(0, Math.ceil(Number(fallbackSec || 0)));
+    }
+
+    function isRunningStatus(statusKey) {
+      return statusKey === 'RUNNING';
+    }
+
+    function collectNextRunState() {
+      const job = currentJob();
+      const latestMeta = uiState.latest?.meta || uiState.dashboard?.latestMeta || {};
+      const auto = uiState.auto || {};
+      const status = job?.displayStatus || job?.status || auto.queueStatus || 'IDLE';
+      const statusKey = normalizeStatusKey(status);
+      const autoStatus = auto.autoStatus || auto.status || job?.displayAutoStatus || job?.autoStatus || (uiState.settings.autoRun ? 'RUNNING' : 'OFF');
+      const autoStatusKey = normalizeStatusKey(autoStatus);
+      const nextRunAt = auto.nextRunAt || job?.nextRunAt || latestMeta.nextRunAt || '';
+      const processedRows = Number(auto.processedRows ?? job?.processedRows ?? latestMeta.processedRows ?? 0);
+      const remainingRows = Number(auto.remainingRows ?? job?.remainingRows ?? latestMeta.remainingRows ?? 0);
+      return {
+        autoRun: Boolean(auto.autoRun ?? uiState.settings.autoRun),
+        status,
+        statusKey,
+        autoStatus,
+        autoStatusKey,
+        nextRunAt,
+        remainingSec: readRemainingSec(nextRunAt, auto.remainingSec || job?.remainingSec || 0),
+        processedRows,
+        remainingRows,
+      };
+    }
+
+    function describeNextRunState(state) {
+      const hasFutureRun = Boolean(state.nextRunAt) && readRemainingSec(state.nextRunAt, state.remainingSec) > 0;
+      if (state.statusKey === 'COMPLETED' || state.statusKey === 'DONE') {
+        return { stateText: 'งานเสร็จแล้ว', countdown: '00:00', message: 'remainingRows = 0', spinner: false, disableStartAuto: true, disableRunNext: true };
+      }
+      if (state.statusKey === 'PAUSED_TOO_MANY_RETRY') {
+        return { stateText: 'พักบัญชีเพราะ RETRY สูง', countdown: '--:--', message: 'ห้ามรันต่อทันที', spinner: false, disableStartAuto: true, disableRunNext: true };
+      }
+      if (isRunningStatus(state.statusKey)) {
+        if (!runningStartedAtMs) runningStartedAtMs = Date.now();
+        const elapsedSec = Math.max(0, Math.floor((Date.now() - runningStartedAtMs) / 1000));
+        return { stateText: 'กำลังตรวจ...', countdown: formatSeconds(elapsedSec), message: `เริ่มรันมาแล้ว ${elapsedSec} วินาที กรุณารอ`, spinner: true, disableStartAuto: true, disableRunNext: true };
+      }
+      runningStartedAtMs = 0;
+      if (state.statusKey === 'PAUSED_RETRY_COOLDOWN' || state.autoStatusKey === 'WAITING_RETRY') {
+        const waitText = hasFutureRun ? `รออีก ${formatSeconds(readRemainingSec(state.nextRunAt, state.remainingSec))}` : 'รอผู้ใช้ตรวจสถานะก่อนรัน';
+        return { stateText: 'พัก RETRY', countdown: hasFutureRun ? formatSeconds(readRemainingSec(state.nextRunAt, state.remainingSec)) : '--:--', message: waitText, spinner: hasFutureRun, disableStartAuto: true, disableRunNext: hasFutureRun };
+      }
+      if (!state.autoRun) {
+        return { stateText: 'Auto OFF', countdown: '--:--', message: 'ใช้ปุ่ม ตรวจ 1 รอบ เพื่อรันแบบมือ', spinner: false, disableStartAuto: false, disableRunNext: false };
+      }
+      if (state.autoRun && hasFutureRun) {
+        return { stateText: 'Auto กำลังทำงาน', countdown: formatSeconds(readRemainingSec(state.nextRunAt, state.remainingSec)), message: 'รอบถัดไปใน ' + formatSeconds(readRemainingSec(state.nextRunAt, state.remainingSec)), spinner: true, disableStartAuto: true, disableRunNext: true };
+      }
+      if (state.statusKey === 'READY' && state.autoRun && !state.nextRunAt) {
+        return { stateText: 'Auto พร้อมรัน รอ tick ถัดไปภายในไม่กี่วินาที', countdown: '--:--', message: 'กำลังรอ server tick', spinner: true, disableStartAuto: true, disableRunNext: true };
+      }
+      return { stateText: toThaiStatus(state.status || state.autoStatus || '-'), countdown: hasFutureRun ? formatSeconds(readRemainingSec(state.nextRunAt, state.remainingSec)) : '--:--', message: state.autoRun ? 'Auto ON' : 'รอคำสั่งผู้ใช้', spinner: false, disableStartAuto: state.autoRun, disableRunNext: false };
+    }
+
+    function paintNextRunIndicator() {
+      if (!nextRunIndicatorState || !nextRunStateEl) return;
+      const state = {
+        ...nextRunIndicatorState,
+        remainingSec: readRemainingSec(nextRunIndicatorState.nextRunAt, nextRunIndicatorState.remainingSec),
+      };
+      const display = describeNextRunState(state);
+      nextRunStateEl.textContent = display.stateText;
+      nextRunCountdownEl.textContent = display.countdown;
+      nextRunClockEl.textContent = state.nextRunAt ? formatTimeOnly(state.nextRunAt) : '-';
+      nextRunMessageEl.textContent = display.message;
+      nextRunProcessedEl.textContent = String(state.processedRows);
+      nextRunRemainingEl.textContent = String(state.statusKey === 'COMPLETED' || state.statusKey === 'DONE' ? 0 : state.remainingRows);
+      nextRunSpinnerEl.classList.toggle('hidden', !display.spinner);
+      if (countdownTextEl) countdownTextEl.textContent = display.countdown;
+      if (countdownHintEl) countdownHintEl.textContent = display.message;
+      if (startAutoBtnEl) startAutoBtnEl.disabled = Boolean(startAutoBlockedByStatus || display.disableStartAuto);
+      const runNextBtn = document.getElementById('runNextBtn');
+      if (runNextBtn) runNextBtn.disabled = Boolean(display.disableRunNext);
+    }
+
+    function updateNextRunIndicator() {
+      nextRunIndicatorState = collectNextRunState();
+      paintNextRunIndicator();
+      if (!nextRunIndicatorTimer) {
+        nextRunIndicatorTimer = setInterval(paintNextRunIndicator, 1000);
+      }
+    }
+
     function toThaiStatus(status) {
       const key = String(status || '').toUpperCase();
       if (key === 'READY') return 'พร้อมเริ่ม';
@@ -894,6 +1139,7 @@
       if (key === 'ERROR') return 'เกิดข้อผิดพลาด';
       if (key === 'PAUSED') return 'หยุดชั่วคราว';
       if (key === 'WAITING_FLOOD') return 'รอ FloodWait';
+      if (key === 'AUTH_REQUIRED') return 'ต้องล็อกอินใหม่';
       if (key === 'PAUSED_FLOOD_STALE') return 'หยุดชั่วคราว (Flood ค้าง)';
       return status || '-';
     }
@@ -909,6 +1155,7 @@
     }
 
     function setDownloadButtons(downloads = {}) {
+      uiState.downloads = downloads || {};
       const toggle = (el, enabled) => {
         if (!el) return;
         el.disabled = !enabled;
@@ -920,25 +1167,192 @@
       toggle(downloadRemainingXlsxBtnEl, Boolean(downloads.remainingXlsx));
       toggle(downloadRunLogBtnEl, Boolean(downloads.runLog));
       toggle(downloadAllResultsBtnEl, Boolean(downloads.allResultsCsv));
+      toggle(downloadAllJsonBtnEl, Boolean(downloads.allResultsJson));
       toggle(downloadYesOnlyBtnEl, Boolean(downloads.yesOnlyCsv));
       toggle(downloadNoOnlyBtnEl, Boolean(downloads.noOnlyCsv));
       toggle(downloadRetryOnlyBtnEl, Boolean(downloads.retryOnlyCsv));
+      toggle(downloadInvalidOnlyBtnEl, Boolean(downloads.invalidOnlyCsv));
       toggle(downloadMarketingAllowedBtnEl, Boolean(downloads.marketingAllowedCsv));
       toggle(downloadWinbackBtnEl, Boolean(downloads.winbackCsv));
       toggle(downloadRetryLaterBtnEl, Boolean(downloads.retryLaterCsv));
+      renderOneScreenFlow();
     }
     setDownloadButtons({});
 
+    function selectedAccount() {
+      return accountsCache.find((account) => account.selected)
+        || accountsCache.find((account) => account.hasSession && (account.status === "ready" || account.status === "connected"))
+        || null;
+    }
+
+    function accountHasSession(account) {
+      return Boolean(account?.hasSession) || Boolean(account?.sessionEnc) || ["ready", "connected"].includes(String(account?.status || ""));
+    }
+
+    function currentJob() {
+      return uiState.job || uiState.dashboard?.job || null;
+    }
+
+    function setBoardValue(field, value) {
+      const el = document.querySelector(`[data-board-field="${field}"]`);
+      if (el) el.textContent = String(value ?? "-");
+    }
+
+    function readinessClass(label) {
+      const key = String(label || "").toLowerCase();
+      if (key === "ready") return "ready";
+      if (key === "connected") return "connected";
+      if (key === "error") return "error";
+      return "warning";
+    }
+
+    function computeReadiness(account, cleanReady, job, status) {
+      const statusKey = String(status || "").toUpperCase();
+      if (["ERROR", "AUTH_REQUIRED", "PAUSED_TOO_MANY_RETRY"].includes(statusKey)) return "ERROR";
+      if (account && accountHasSession(account) && cleanReady.exists && job) return "READY";
+      if (account && accountHasSession(account)) return "CONNECTED";
+      return "WARNING";
+    }
+
+    function updateStepPanel(account, cleanReady, job) {
+      if (!stepPanelEl) return;
+      const processed = Number(job?.processedRows || uiState.latest?.meta?.processedRows || 0);
+      const steps = [
+        { title: "เลือกระบบ", note: `ระบบ ${activeSystemId}`, state: "done" },
+        { title: "เลือกบัญชี Telegram", note: account ? `${account.label || "-"} / ${account.status || "-"}` : "ยังไม่ได้เลือก", state: account && accountHasSession(account) ? "done" : account ? "warn" : "wait" },
+        { title: "อัปโหลดไฟล์", note: cleanReady.exists ? `${cleanReady.readyRows || 0} rows` : "ยังไม่มี clean_ready.csv", state: cleanReady.exists ? "done" : "wait" },
+        { title: "สร้างคิว", note: job?.id || "ยังไม่มี job", state: job ? "done" : cleanReady.exists ? "wait" : "wait" },
+        { title: "ตรวจ 1 รอบ", note: processed > 0 ? `${processed} processed` : "ยังไม่ได้ตรวจ", state: processed > 0 ? "done" : job ? "wait" : "wait" },
+        { title: "ดาวน์โหลดผล", note: uiState.downloads.processedCsv ? "พร้อมดาวน์โหลด" : "รอผลลัพธ์", state: uiState.downloads.processedCsv ? "done" : "wait" },
+      ];
+      stepPanelEl.innerHTML = steps.map((step) => {
+        const mark = step.state === "done" ? "✓" : step.state === "warn" ? "!" : "○";
+        return `
+          <li class="step-item ${step.state}">
+            <span class="step-mark">${mark}</span>
+            <span class="step-title">${escapeHtml(step.title)}</span>
+            <span class="step-note">${escapeHtml(step.note)}</span>
+          </li>
+        `;
+      }).join("");
+    }
+
+    function renderOneScreenFlow() {
+      const account = selectedAccount();
+      const cleanReady = cleanReadyStateBySystem.get(activeSystemId) || { exists: false, path: "", readyRows: 0 };
+      const job = currentJob();
+      const latestMeta = uiState.latest?.meta || uiState.dashboard?.latestMeta || {};
+      const status = job?.displayStatus || job?.status || uiState.auto.queueStatus || "IDLE";
+      const autoRun = Boolean(uiState.auto.autoRun ?? uiState.settings.autoRun);
+      const perRun = Number(job?.perRunLimit || uiState.settings.maxContactsPerRun || 20);
+      const chunkSize = Number(job?.chunkSize || uiState.settings.batchSize || 1);
+      const processedRows = Number(job?.processedRows || latestMeta.processedRows || 0);
+      const remainingRows = Number(job?.remainingRows || latestMeta.remainingRows || 0);
+      const totalRows = Number(job?.totalRows || latestMeta.totalRows || cleanReady.readyRows || 0);
+      const readyLabel = computeReadiness(account, cleanReady, job, status);
+      const statusKey = String(status || "").toUpperCase();
+      const guardedStatus = statusKey.includes("AUTH")
+        || statusKey.includes("FLOOD")
+        || statusKey.includes("RETRY")
+        || statusKey.includes("PAUSED");
+      if (resumeManualBtnEl) {
+        resumeManualBtnEl.classList.toggle("legacy-hidden", statusKey !== "PAUSED");
+      }
+
+      if (headerSystemEl) headerSystemEl.textContent = activeSystemId;
+      if (headerAccountEl) headerAccountEl.textContent = account?.label || job?.lockedAccountLabel || "-";
+      if (headerQueueStatusEl) headerQueueStatusEl.textContent = toThaiStatus(status);
+      if (headerAutoEl) headerAutoEl.textContent = autoRun ? "ON" : "OFF";
+      if (readinessBadgeEl) {
+        readinessBadgeEl.textContent = readyLabel;
+        readinessBadgeEl.className = `chip status-badge ${readinessClass(readyLabel)}`;
+      }
+
+      setBoardValue("systemId", activeSystemId);
+      setBoardValue("selectedAccountLabel", account?.label || job?.lockedAccountLabel || "-");
+      setBoardValue("accountStatus", account?.status || "-");
+      setBoardValue("hasSession", accountHasSession(account));
+      setBoardValue("cleanReadyPath", cleanReady.path || "-");
+      setBoardValue("cleanReadyExists", cleanReady.exists);
+      setBoardValue("readyRows", cleanReady.readyRows || 0);
+      setBoardValue("jobId", job?.id || "-");
+      setBoardValue("totalRows", totalRows);
+      setBoardValue("processedRows", processedRows);
+      setBoardValue("remainingRows", remainingRows);
+      setBoardValue("status", toThaiStatus(status));
+      setBoardValue("autoRun", autoRun);
+      setBoardValue("perRun", perRun);
+      setBoardValue("chunkSize", chunkSize);
+
+      if (resultYesEl) resultYesEl.textContent = Number(job?.matchedCountTotal || latestMeta.matchedCountTotal || 0);
+      if (resultNoEl) resultNoEl.textContent = Number(job?.unmatchedCountTotal || latestMeta.unmatchedCountTotal || 0);
+      if (resultRetryEl) resultRetryEl.textContent = Number(job?.retryCountTotal || latestMeta.retryCountTotal || 0);
+      if (resultProcessedEl) resultProcessedEl.textContent = processedRows;
+      if (resultRemainingEl) resultRemainingEl.textContent = remainingRows;
+
+      updateStepPanel(account, cleanReady, job);
+      updateNextRunIndicator();
+
+      if (!mainActionBtnEl || !mainActionHintEl) return;
+      mainActionBtnEl.disabled = false;
+      const countdownState = collectNextRunState();
+      const countdownDisplay = describeNextRunState(countdownState);
+      if (countdownDisplay.disableRunNext) {
+        mainActionBtnEl.textContent = countdownDisplay.stateText;
+        mainActionBtnEl.disabled = true;
+        setStatus(mainActionHintEl, countdownDisplay.message, countdownState.statusKey === 'COMPLETED' || countdownState.statusKey === 'DONE' ? "ok" : "warn");
+        return;
+      }
+      if (!cleanReady.exists) {
+        mainActionBtnEl.textContent = "อัปโหลดไฟล์";
+        setStatus(mainActionHintEl, "ยังไม่มี clean_ready.csv เลือกไฟล์แล้วกดปุ่มหลักเพื่ออัปโหลด", account && accountHasSession(account) ? "warn" : "warn");
+        return;
+      }
+      if (!account || !accountHasSession(account)) {
+        mainActionBtnEl.textContent = "เลือกบัญชี Telegram";
+        setStatus(mainActionHintEl, "พบ clean_ready.csv แล้ว แต่บัญชี Telegram ยังไม่พร้อม เลือกบัญชีที่เชื่อมแล้วก่อนสร้างคิว", "warn");
+        return;
+      }
+      if (!job) {
+        mainActionBtnEl.textContent = "สร้างคิวจาก clean_ready.csv";
+        setStatus(mainActionHintEl, `พบ clean_ready.csv พร้อมใช้ ${cleanReady.readyRows || 0} rows`, "ok");
+        return;
+      }
+      if (guardedStatus) {
+        mainActionBtnEl.textContent = "ตรวจสถานะก่อนรัน";
+        mainActionBtnEl.disabled = true;
+        setStatus(mainActionHintEl, `คิวอยู่สถานะ ${toThaiStatus(status)} ต้องตรวจใน Status Board / Danger Zone ก่อน ห้ามกดรันมั่ว`, "warn");
+        return;
+      }
+      if (remainingRows <= 0 && processedRows > 0) {
+        mainActionBtnEl.textContent = "งานเสร็จแล้ว";
+        mainActionBtnEl.disabled = true;
+        setStatus(mainActionHintEl, "ไม่มี remainingRows เหลือ ดาวน์โหลดผลลัพธ์ได้จาก Results Area", "ok");
+        return;
+      }
+      mainActionBtnEl.textContent = "ตรวจ 1 รอบ";
+      setStatus(mainActionHintEl, `job พร้อม ตรวจครั้งละ ${perRun} rows, chunkSize ${chunkSize}, Auto ${autoRun ? "ON" : "OFF"}`, "ok");
+    }
+
     function renderSystemTabs() {
       systemTabsEl.querySelectorAll("[data-system-id]").forEach((button) => {
+        const system = systemsSummaryCache.find((item) => item.id === button.dataset.systemId) || {};
+        const status = String(system.status || (button.dataset.systemId === activeSystemId ? "IDLE" : "IDLE")).toUpperCase();
+        const displayStatus = ["READY", "RUNNING", "ERROR"].includes(status) ? status : status === "COMPLETED" ? "DONE" : status;
+        button.innerHTML = `<span>ระบบ ${escapeHtml(button.dataset.systemId)}</span><span class="tab-status">${escapeHtml(displayStatus)}</span>`;
         button.classList.toggle("active", button.dataset.systemId === activeSystemId);
+        button.classList.toggle("ready", displayStatus === "READY" || displayStatus === "DONE");
+        button.classList.toggle("connected", displayStatus === "RUNNING");
+        button.classList.toggle("warning", displayStatus === "IDLE" || displayStatus === "PAUSED");
+        button.classList.toggle("error", displayStatus === "ERROR" || displayStatus === "AUTH_REQUIRED");
       });
     }
 
     function renderSystemMiniCards(systems = []) {
+      systemsSummaryCache = Array.isArray(systems) ? systems : [];
       const list = Array.isArray(systems) && systems.length
         ? systems
-        : SYSTEM_IDS.map((id) => ({ id, label: `ระบบ ${id}`, status: "-", processed: 0, remaining: 0, yes: 0, no: 0, retry: 0 }));
+        : SYSTEM_IDS.map((id) => ({ id, label: `ระบบ ${id}`, status: "-", processed: 0, remaining: 0, yes: 0, no: 0, retry: 0, invalid: 0 }));
       systemMiniCardsEl.innerHTML = list.map((system) => `
         <button class="system-mini-card ${system.id === activeSystemId ? "active" : ""}" type="button" data-system-id="${escapeHtml(system.id)}">
           <div class="top">
@@ -952,9 +1366,11 @@
             <span><strong>${Number(system.yes || 0)}</strong>YES</span>
             <span><strong>${Number(system.no || 0)}</strong>NO</span>
             <span><strong>${Number(system.retry || 0)}</strong>RETRY</span>
+            <span><strong>${Number(system.invalid || 0)}</strong>INVALID</span>
           </div>
         </button>
       `).join("");
+      renderSystemTabs();
     }
 
     async function loadSystemsSummary() {
@@ -987,6 +1403,7 @@
         { label: 'YES', value: cards?.yes ?? 0, sub: 'เจอ Telegram' },
         { label: 'NO', value: cards?.no ?? 0, sub: 'ไม่เจอ' },
         { label: 'RETRY', value: cards?.retry ?? 0, sub: 'รอลองใหม่' },
+        { label: 'INVALID', value: cards?.invalid ?? 0, sub: 'เบอร์ผิดรูปแบบ' },
         { label: 'สถานะ', value: toThaiStatus(cards?.queueStatus || '-'), sub: `บัญชี ${cards?.account || '-'}` },
       ];
       liveCardsEl.innerHTML = items.map((item) => `
@@ -1053,6 +1470,7 @@
     }
 
     function renderDashboard(data) {
+      uiState.dashboard = data || null;
       renderAlerts(data.alerts || []);
       renderLiveCards(data.cards || {});
       renderEvents(data.events || []);
@@ -1077,6 +1495,7 @@
         `chunk ทั้งหมด: ${job.chunks?.length || 0}`,
         `chunk ปัจจุบัน: ${job.currentChunkIndex || 0}`,
         `row ใน chunk: ${job.currentRowIndex || 0}`,
+        `YES / NO / RETRY / INVALID: ${job.matchedCountTotal || 0} / ${job.unmatchedCountTotal || 0} / ${job.retryCountTotal || 0} / ${job.invalidCountTotal || 0}`,
         `รอบล่าสุด: ${job.lastBatchNumber || 0}`,
         `ช่วงล่าสุด: ${job.lastBatchStart || 0} - ${job.lastBatchEnd || 0}`,
         `เวลารอบถัดไป: ${job.nextRunAt ? formatDateTime(job.nextRunAt) : '-'}`,
@@ -1105,10 +1524,12 @@
       ].join('\n');
 
       startCountdown(job.remainingSec || 0, retryManualPause ? 'OFF' : (job.displayAutoStatus || 'OFF'));
+      renderOneScreenFlow();
     }
 
     function accountStatusPill(account) {
       if (account.status === "connected") return '<span class="pill connected">connected</span>';
+      if (account.status === "ready") return '<span class="pill connected">ready</span>';
       if (account.status === "code_sent") return '<span class="pill pending">code_sent</span>';
       if (account.status === "awaiting_password") return '<span class="pill pending">awaiting_password</span>';
       if (account.status === "needs_relogin") return '<span class="pill pending">needs_relogin</span>';
@@ -1122,6 +1543,7 @@
       if (!accountsCache.length) {
         accountsBody.innerHTML = '<tr><td colspan="6" class="small">ยังไม่มีบัญชี</td></tr>';
         pendingInfoEl.textContent = "ยังไม่มีบัญชีที่รอยืนยัน";
+        renderOneScreenFlow();
         return;
       }
 
@@ -1160,9 +1582,6 @@
             <div class="account-actions">
               <button class="ghost" type="button" onclick="sendCode('${account.id}')">ส่ง OTP</button>
               <button class="info" type="button" onclick="selectAccount('${account.id}')">ใช้บัญชีนี้</button>
-              <button class="ghost" type="button" onclick="reloginAccount('${account.id}')">รีล็อกอินบัญชี</button>
-              <button class="ghost" type="button" onclick="resetSession('${account.id}')">ล้าง session บัญชี</button>
-              <button class="danger" type="button" onclick="deleteAccount('${account.id}')">ลบ</button>
             </div>
           </td>
         </tr>
@@ -1179,12 +1598,19 @@
           pending.lastError ? `แจ้งเตือน: ${pending.lastError}` : "พร้อมยืนยันในหน้านี้",
         ].join("\n");
       }
+      renderOneScreenFlow();
     }
 
     function renderSettings(settings) {
-      document.getElementById("autoRun").value = String(Boolean(settings.autoRun));
-      document.getElementById("maxContactsPerRun").value = settings.maxContactsPerRun;
-      document.getElementById("batchSize").value = settings.batchSize;
+      uiState.settings = {
+        ...settings,
+        autoRun: Boolean(settings.autoRun),
+        maxContactsPerRun: Number(settings.maxContactsPerRun || 20),
+        batchSize: Number(settings.batchSize || 1),
+      };
+      document.getElementById("autoRun").value = String(Boolean(uiState.settings.autoRun));
+      document.getElementById("maxContactsPerRun").value = uiState.settings.maxContactsPerRun;
+      document.getElementById("batchSize").value = uiState.settings.batchSize;
       document.getElementById("delayBetweenRunsSec").value = settings.delayBetweenRunsSec;
       document.getElementById("retryPauseSec").value = settings.retryPauseSec;
       document.getElementById("retryRatioThreshold").value = settings.retryRatioThreshold;
@@ -1198,16 +1624,20 @@
         `retry threshold: ${settings.retryRatioThreshold}`,
         `FloodWait: ${settings.waitFloodAutomatically ? "รออัตโนมัติ" : "พักไว้ก่อน"}`
       ].join("\n"), "ok");
+      renderOneScreenFlow();
     }
 
     function renderAutoStatus(data) {
+      uiState.auto = data || {};
       const queueStatus = String(data.queueStatus || '').toUpperCase();
       const requiresFloodReset = Boolean(data.requiresFloodReset) || queueStatus === 'PAUSED_FLOOD_STALE';
       const retryManualPause = Boolean(data.manualRetryRequired || data.retryRatioHigh) || isHighRetryPauseState(queueStatus, data.retryRatio);
       if (retryManualPause) forceAutoOffInUi();
+      startAutoBlockedByStatus = requiresFloodReset || retryManualPause;
       resumeAutoBtnEl.disabled = requiresFloodReset || retryManualPause;
-      startAutoBtnEl.disabled = requiresFloodReset || retryManualPause;
+      startAutoBtnEl.disabled = startAutoBlockedByStatus;
       resetFloodBtnEl.disabled = !requiresFloodReset;
+      if (clearStaleJobBtnEl) clearStaleJobBtnEl.disabled = !requiresFloodReset;
       setStatus(autoStatusEl, [
         retryManualPause ? 'คำเตือน: Telegram กำลังให้พักบัญชี เพราะ RETRY สูง ให้ปิด Auto และกดทำรอบถัดไปเองเท่านั้น' : '',
         `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (data.status || "OFF"))}`,
@@ -1222,25 +1652,32 @@
         `FloodWait เหลือ: ${data.floodWaitSec || 0} วินาที`,
         `retry ratio ล่าสุด: ${Number(data.retryRatio || 0).toFixed(2)}`
       ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
+      renderOneScreenFlow();
     }
 
     function renderIntakeSummary(data) {
+      rememberCleanReadyState(activeSystemId, data || {});
       setStatus(intakeSummaryEl, [
         `ชื่องาน: ${data.jobLabel || "-"}`,
         `หมายเหตุ: ${data.jobNote || "-"}`,
         `ไฟล์ต้นทาง: ${data.originalFilename || "-"}`,
+        `clean_ready: ${data.cleanReadyExists ? "พร้อม" : "ไม่พบ"}`,
+        data.cleanReadyPath ? `path: ${data.cleanReadyPath}` : "",
         `พร้อมใช้: ${data.readyRows || 0}`,
         `แถวเสีย: ${data.invalidRows || 0}`,
         `ซ้ำ: ${data.duplicateRows || 0}`,
         `คอลัมน์เบอร์: ${data.phoneColumn || "-"}`,
         `คอลัมน์ชื่อ: ${data.nameColumn || "(จะเติมชื่ออัตโนมัติ)"}`,
         `สร้างเมื่อ: ${data.generatedAt || "-"}`
-      ].join("\n"), "ok");
+      ].filter(Boolean).join("\n"), data.cleanReadyExists === false ? "warn" : "ok");
+      renderOneScreenFlow();
     }
 
     function renderJob(job) {
+      uiState.job = job || null;
       if (!job) {
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
+        renderOneScreenFlow();
         return;
       }
       const retryManualPause = Boolean(job.manualRetryRequired) || isHighRetryPauseState(job.displayStatus || job.status, job.lastRetryRatio);
@@ -1266,15 +1703,19 @@
         `เจอสะสม: ${job.matchedCountTotal || 0}`,
         `ไม่เจอสะสม: ${job.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${job.retryCountTotal || 0}`,
+        `เบอร์ผิดสะสม: ${job.invalidCountTotal || 0}`,
         `สถานะคิว: ${toThaiStatus(job.status || "-")}`,
         `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (job.autoStatus || "OFF"))}`,
         `ถัดไป: ${job.nextRunAt || "-"}`
       ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
+      renderOneScreenFlow();
     }
 
     function renderSummary(latest) {
+      uiState.latest = latest || null;
       if (!latest || !latest.meta) {
         setStatus(summaryEl, "ยังไม่มีผลล่าสุด");
+        renderOneScreenFlow();
         return;
       }
       const meta = latest.meta;
@@ -1293,15 +1734,18 @@
         `เจอรอบนี้: ${meta.matchedCount || 0}`,
         `ไม่เจอรอบนี้: ${meta.unmatchedCount || 0}`,
         `รอลองใหม่รอบนี้: ${meta.retryCount || 0}`,
+        `เบอร์ผิดรอบนี้: ${meta.invalidCount || 0}`,
         `ทำแล้วทั้งหมด: ${meta.processedRows || 0}/${meta.totalRows || 0}`,
         `เหลือ: ${meta.remainingRows || 0}`,
         `เจอสะสม: ${meta.matchedCountTotal || 0}`,
         `ไม่เจอสะสม: ${meta.unmatchedCountTotal || 0}`,
         `รอลองใหม่สะสม: ${meta.retryCountTotal || 0}`,
+        `เบอร์ผิดสะสม: ${meta.invalidCountTotal || 0}`,
         `Auto: ${toThaiStatus(retryManualPause ? "OFF" : (meta.autoStatus || "OFF"))}`,
         `เวลารอบถัดไป: ${meta.nextRunAt || "-"}`,
         `เวลาสร้างผล: ${meta.generatedAt || "-"}`
       ].filter(Boolean).join("\n"), retryManualPause ? "warn" : undefined);
+      renderOneScreenFlow();
     }
 
     function renderRows(rows) {
@@ -1311,7 +1755,7 @@
       }
 
       resultsBody.innerHTML = rows.map((row) => {
-        const cls = row.status === "YES" ? "yes" : row.status === "RETRY" ? "pending" : "no";
+        const cls = row.status === "YES" ? "yes" : row.status === "RETRY" ? "pending" : row.status === "INVALID" ? "no" : "no";
         return `
           <tr>
             <td>${escapeHtml(row.sourceIndex || "")}</td>
@@ -1334,6 +1778,7 @@
       const yes = Number(segmentation?.telegramStatus?.YES || 0);
       const no = Number(segmentation?.telegramStatus?.NO || 0);
       const retry = Number(segmentation?.telegramStatus?.RETRY || 0);
+      const invalid = Number(segmentation?.telegramStatus?.INVALID || 0);
       const consentYes = Number(segmentation?.consentStatus?.yes || 0);
       const consentNo = Number(segmentation?.consentStatus?.no || 0);
       const consentUnknown = Number(segmentation?.consentStatus?.unknown || 0);
@@ -1349,7 +1794,7 @@
       setStatus(segmentationSummaryEl, [
         `Segmentation summary`,
         `total rows: ${segmentation.totalRows || 0}`,
-        `YES/NO/RETRY: ${yes}/${no}/${retry}`,
+        `YES/NO/RETRY/INVALID: ${yes}/${no}/${retry}/${invalid}`,
         `consent yes/no/unknown: ${consentYes}/${consentNo}/${consentUnknown}`,
         `top sourceLabel by YES rate: ${topSource}`,
         `low quality sourceLabel: ${lowQuality}`,
@@ -1360,7 +1805,11 @@
       try {
         const response = await fetch(url, { cache: "no-store", credentials: "same-origin", ...options });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || data.message || "โหลดข้อมูลไม่สำเร็จ");
+        if (!response.ok) {
+          const checkedPath = data.cleanReadyPath || data.expectedCleanReadyPath || "";
+          const message = [data.error || data.message || "โหลดข้อมูลไม่สำเร็จ", checkedPath ? `path: ${checkedPath}` : ""].filter(Boolean).join("\n");
+          throw new Error(message);
+        }
         return data;
       } catch (error) {
         const message = String(error?.message || "");
@@ -1399,7 +1848,9 @@
         renderIntakeSummary(data);
       } catch {
         if (!isActiveSystem(systemId)) return;
+        rememberCleanReadyState(systemId, { cleanReadyExists: false });
         setStatus(intakeSummaryEl, "ยังไม่มีผลล้างไฟล์");
+        renderOneScreenFlow();
       }
     }
 
@@ -1432,6 +1883,8 @@
       } catch {
         if (!isActiveSystem(systemId)) return;
         setStatus(jobStatusEl, "ยังไม่มีคิวงาน");
+        uiState.job = null;
+        renderOneScreenFlow();
       }
     }
 
@@ -1457,6 +1910,8 @@
       } catch (error) {
         if (!isActiveSystem(systemId)) return;
         reportBoardEl.textContent = error.message || 'โหลด dashboard ไม่สำเร็จ';
+        uiState.dashboard = null;
+        renderOneScreenFlow();
       }
     }
 
@@ -1480,6 +1935,32 @@
         refreshAll().catch(() => {});
       }, 5000);
     }
+
+    mainActionBtnEl?.addEventListener("click", () => {
+      const account = selectedAccount();
+      const cleanReady = cleanReadyStateBySystem.get(activeSystemId) || { exists: false };
+      const job = currentJob();
+      if (!cleanReady.exists) {
+        const fileInput = document.getElementById("intakeFile");
+        if (fileInput?.files?.length) {
+          document.getElementById("intakeForm").requestSubmit();
+        } else {
+          fileInput?.click();
+          setStatus(intakeStatusEl, "เลือกไฟล์ก่อน แล้วกดปุ่มอัปโหลดไฟล์อีกครั้ง", "warn");
+        }
+        return;
+      }
+      if (!account || !accountHasSession(account)) {
+        document.getElementById("accountPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setStatus(accountStatusEl, "เลือกบัญชีที่เชื่อม Telegram แล้ว หรือเพิ่มบัญชีและยืนยัน OTP/2FA ก่อน", "warn");
+        return;
+      }
+      if (!job) {
+        document.getElementById("createJobBtn").click();
+        return;
+      }
+      document.getElementById("runNextBtn").click();
+    });
 
     document.getElementById("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1508,6 +1989,12 @@
 
     document.getElementById("startAutoBtn").addEventListener("click", async () => {
       try {
+        const state = collectNextRunState();
+        if (startAutoBtnEl.disabled || state.autoRun) {
+          setStatus(autoStatusEl, state.autoRun ? "Auto เริ่มแล้ว กรุณารอรอบถัดไป" : "ยังเริ่มออโต้ไม่ได้ในสถานะนี้", "warn");
+          updateNextRunIndicator();
+          return;
+        }
         await fetchJson(`${apiBase()}/job/start-auto`, { method: "POST" });
         await refreshAll();
       } catch (error) {
@@ -1547,6 +2034,43 @@
       }
     });
 
+    clearStaleJobBtnEl?.addEventListener("click", async () => {
+      try {
+        await fetchJson(`${apiBase()}/job/reset-flood-stale`, { method: "POST" });
+        setStatus(autoStatusEl, "ล้าง stale job แล้ว คิวกลับเป็น READY และ Auto ถูกปิดไว้", "ok");
+        await refreshAll();
+      } catch (error) {
+        setStatus(autoStatusEl, error.message, "bad");
+      }
+    });
+
+    resumeManualBtnEl?.addEventListener("click", async () => {
+      try {
+        const data = await fetchJson(`${apiBase()}/job/resume-manual`, { method: "POST" });
+        renderJob(data.job || null);
+        renderSettings(data.settings || uiState.settings);
+        setStatus(autoStatusEl, data.message || "ปลดพักคิวสำหรับตรวจมือแล้ว", "ok");
+        await refreshAll();
+      } catch (error) {
+        setStatus(autoStatusEl, error.message || "ปลดพักคิวสำหรับตรวจมือไม่สำเร็จ", "bad");
+      }
+    });
+
+    dangerResetSessionBtnEl?.addEventListener("click", async () => {
+      const account = selectedAccount();
+      if (!account) return setStatus(accountStatusEl, "ยังไม่มีบัญชีที่เลือกสำหรับ reset session", "warn");
+      await window.resetSession(account.id);
+      await refreshAll();
+    });
+
+    dangerReloginBtnEl?.addEventListener("click", async () => {
+      const account = selectedAccount();
+      if (!account) return setStatus(accountStatusEl, "ยังไม่มีบัญชีที่เลือกสำหรับ relogin", "warn");
+      if (!confirm("relogin จะล้าง session เดิมของบัญชีที่เลือก แล้วส่ง OTP ใหม่ ต้องการทำต่อใช่ไหม")) return;
+      await window.reloginAccount(account.id);
+      await refreshAll();
+    });
+
     document.getElementById("intakeForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const requestSystemId = activeSystemId;
@@ -1563,6 +2087,7 @@
       try {
         const data = await fetchJson(`${apiBase(requestSystemId)}/upload`, { method: "POST", body: formData });
         if (!isActiveSystem(requestSystemId)) return;
+        rememberCleanReadyState(requestSystemId, data);
         setStatus(intakeStatusEl, data.message || "ล้างไฟล์เรียบร้อย", "ok");
         renderIntakeSummary(data.summary || {});
         await refreshAll(requestSystemId);
@@ -1574,6 +2099,11 @@
 
     document.getElementById("createJobBtn").addEventListener("click", async () => {
       const requestSystemId = activeSystemId;
+      const cleanReadyState = cleanReadyStateBySystem.get(requestSystemId);
+      if (cleanReadyState && !cleanReadyState.exists) {
+        setStatus(intakeStatusEl, `ยังไม่พบ clean_ready.csv\npath: ${cleanReadyState.path || "-"}`, "bad");
+        return;
+      }
       try {
         const data = await fetchJson(`${apiBase(requestSystemId)}/job/create`, { method: "POST" });
         if (!isActiveSystem(requestSystemId)) return;
@@ -1709,6 +2239,13 @@
 
     document.getElementById("runNextBtn").addEventListener("click", async () => {
       try {
+        const state = collectNextRunState();
+        const display = describeNextRunState(state);
+        if (display.disableRunNext) {
+          setStatus(summaryEl, `${display.stateText}\n${display.message}`, "warn");
+          updateNextRunIndicator();
+          return;
+        }
         const data = await fetchJson(`${apiBase()}/job/run-next`, { method: "POST" });
         renderSummary(data.latestBatch || null);
         renderRows((data.latestBatch && data.latestBatch.rows) || []);
@@ -1736,16 +2273,22 @@
       window.open(downloadUrl("run-log"), "_blank");
     });
     downloadAllResultsBtnEl?.addEventListener("click", () => {
-      window.open(downloadUrl("telegram_matches_all.csv"), "_blank");
+      window.open(downloadUrl("all.csv"), "_blank");
+    });
+    downloadAllJsonBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("all.json"), "_blank");
     });
     downloadYesOnlyBtnEl?.addEventListener("click", () => {
-      window.open(downloadUrl("yes_only.csv"), "_blank");
+      window.open(downloadUrl("yes.csv"), "_blank");
     });
     downloadNoOnlyBtnEl?.addEventListener("click", () => {
-      window.open(downloadUrl("no_only.csv"), "_blank");
+      window.open(downloadUrl("no.csv"), "_blank");
     });
     downloadRetryOnlyBtnEl?.addEventListener("click", () => {
-      window.open(downloadUrl("retry_only.csv"), "_blank");
+      window.open(downloadUrl("retry.csv"), "_blank");
+    });
+    downloadInvalidOnlyBtnEl?.addEventListener("click", () => {
+      window.open(downloadUrl("invalid.csv"), "_blank");
     });
     downloadMarketingAllowedBtnEl?.addEventListener("click", () => {
       window.open(downloadUrl("marketing_allowed.csv"), "_blank");
@@ -1765,6 +2308,7 @@
       if (!confirm("ต้องการล้างคิวและผลลัพธ์ทั้งหมดใช่ไหม")) return;
       try {
         const data = await fetchJson(`${apiBase()}/job/reset`, { method: "POST" });
+        rememberCleanReadyState(activeSystemId, { cleanReadyExists: false });
         setStatus(summaryEl, data.message || "ล้างคิวแล้ว", "ok");
         await refreshAll();
       } catch (error) {

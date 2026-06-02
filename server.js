@@ -131,6 +131,8 @@ function getSystemPaths(systemId = currentSystemId()) {
     noOnlyJson: path.join(outputDir, "telegram_no_only.json"),
     retryOnlyCsv: path.join(outputDir, "telegram_retry_only.csv"),
     retryOnlyJson: path.join(outputDir, "telegram_retry_only.json"),
+    invalidOnlyCsv: path.join(outputDir, "telegram_invalid_only.csv"),
+    invalidOnlyJson: path.join(outputDir, "telegram_invalid_only.json"),
     marketingAllowedCsv: path.join(outputDir, "marketing_allowed_only.csv"),
     marketingAllowedJson: path.join(outputDir, "marketing_allowed_only.json"),
     winbackCsv: path.join(outputDir, "winback_only.csv"),
@@ -139,6 +141,7 @@ function getSystemPaths(systemId = currentSystemId()) {
     retryLaterJson: path.join(outputDir, "retry_later_only.json"),
     autoState: path.join(outputDir, "auto_state.json"),
     runLog: path.join(logDir, "run_log.json"),
+    importDiagnosticLog: path.join(logDir, "import_diagnostic_log.jsonl"),
     remainingCsv: path.join(outputDir, "remaining_only.csv"),
     remainingXlsx: path.join(outputDir, "remaining_only.xlsx"),
   };
@@ -190,6 +193,7 @@ const activeClients = new Map();
 const pendingAuthClients = new Map();
 const autoTimers = new Map();
 const simulatedRenameFailures = new Map();
+let contactClientIdCounter = 0n;
 
 function toPositiveNumber(value, fallback) {
   const parsed = Number(value);
@@ -213,11 +217,13 @@ function displayQueueStatus(status) {
   if (value === 'paused_too_many_retry') return 'PAUSED_TOO_MANY_RETRY';
   if (value === 'waiting_retry_cooldown' || value === 'paused_retry_cooldown') return 'WAITING_RETRY';
   if (value === 'waiting_flood') return 'WAITING_FLOOD';
+  if (value === 'auth_required') return 'AUTH_REQUIRED';
   if (value === 'paused_flood_stale') return 'PAUSED_FLOOD_STALE';
   if (value === 'completed') return 'COMPLETED';
   if (value === 'paused') return 'PAUSED';
   if (value === 'ready') return 'READY';
   if (value === 'running') return 'RUNNING';
+  if (value === 'auth_required') return 'AUTH_REQUIRED';
   return value ? value.toUpperCase() : 'IDLE';
 }
 
@@ -225,6 +231,7 @@ function displayAutoStatus(status) {
   const value = String(status || '').toLowerCase();
   if (value === 'off') return 'OFF';
   if (value === 'running') return 'RUNNING';
+  if (value === 'auth_required') return 'AUTH_REQUIRED';
   if (value === 'waiting_flood') return 'WAITING_FLOOD';
   if (value === 'waiting_retry_cooldown' || value === 'paused_retry_cooldown' || value === 'waiting_retry') return 'WAITING_RETRY';
   if (value === 'paused_flood_stale') return 'PAUSED_FLOOD_STALE';
@@ -246,6 +253,13 @@ function shouldRequireFloodReset(job) {
 
 function logInfo(message) {
   console.log(`[INFO] ${message}`);
+}
+
+function safePathForResponse(filePath) {
+  const resolved = path.resolve(String(filePath || ""));
+  const relative = path.relative(APP_ROOT, resolved);
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) return relative.replace(/\\/g, "/");
+  return path.basename(resolved);
 }
 
 function onlyDigits(value) {
@@ -388,6 +402,7 @@ function computeNextAction(row) {
   const customerStatus = normalizeCustomerStatus(row?.customerStatus);
   const score = Number(row?.leadScore || 0);
 
+  if (status === "INVALID") return "FIX_PHONE";
   if (status === "RETRY") return "RETRY_LATER";
   if (consentStatus !== "yes") return "HOLD_FOR_CONSENT";
   if (score <= 0) return "LOW_QUALITY";
@@ -479,6 +494,21 @@ function maskSecret(value, start = 4, end = 2) {
   if (!text) return "";
   if (text.length <= start + end) return "*".repeat(text.length);
   return `${text.slice(0, start)}${"*".repeat(text.length - start - end)}${text.slice(-end)}`;
+}
+
+function maskPhone(value) {
+  const text = String(value || "");
+  const digits = onlyDigits(text);
+  if (!digits) return "";
+  return maskSecret(digits, 3, 2);
+}
+
+function sanitizeDiagnosticErrorMessage(error) {
+  const text = normalizeErrorMessage(error).replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text
+    .replace(/\b\d{8,15}\b/g, (value) => maskPhone(value) || "***")
+    .slice(0, 500);
 }
 
 function stripPhoneFormatting(value) {
@@ -604,6 +634,40 @@ function toSafeStringId(value) {
   }
 }
 
+function nextContactClientId() {
+  contactClientIdCounter = (contactClientIdCounter + 1n) % 999999n;
+  return BigInt(Date.now()) * 1000000n + contactClientIdCounter;
+}
+
+function validateCheckerPhone(row) {
+  const raw = row?.normalizedPhone || row?.phone || row?.rawPhone || "";
+  const normalized = normalizeThaiPhoneStrict(raw);
+  if (!normalized) return { ok: false, normalizedPhone: "", reason: "invalid_phone" };
+  return { ok: true, normalizedPhone: normalized, reason: "" };
+}
+
+function makeCheckerResultRow(row, status, extra = {}) {
+  return withSegmentation({
+    sourceIndex: row.sourceIndex,
+    name: row.name,
+    rawPhone: row.rawPhone,
+    normalizedPhone: extra.normalizedPhone ?? row.normalizedPhone ?? row.phone ?? "",
+    status,
+    hasTelegram: status === "YES",
+    retry: status === "RETRY",
+    telegramUserId: extra.telegramUserId || "",
+    telegramUsername: extra.telegramUsername || "",
+    telegramFirstName: extra.telegramFirstName || "",
+    telegramLastName: extra.telegramLastName || "",
+    telegramPhone: extra.telegramPhone || "",
+    clientId: extra.clientId || "",
+    sourceLabel: row.sourceLabel || "unknown",
+    consentStatus: row.consentStatus || "unknown",
+    customerStatus: row.customerStatus || "new",
+    reason: extra.reason || "",
+  }, row.sourceLabel || "unknown");
+}
+
 function parseFloodSeconds(message) {
   const text = String(message || "");
   const match = text.match(/wait of (\d+) seconds/i) || text.match(/FLOOD_WAIT[_ ]?(\d+)/i);
@@ -637,6 +701,21 @@ function makeAccountAuthError(message, accountStatus = "needs_relogin") {
   err.isAccountAuthError = true;
   err.accountStatus = accountStatus;
   return err;
+}
+
+function makeAuthRequiredError(message = "บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", accountStatus = "needs_relogin") {
+  const err = makeAccountAuthError(message, accountStatus);
+  err.type = "AUTH_REQUIRED";
+  err.code = "AUTH_REQUIRED";
+  return err;
+}
+
+function authRequiredMessage(error) {
+  const raw = normalizeErrorMessage(error);
+  if (/UNSUPPORTED STATE OR UNABLE TO AUTHENTICATE DATA/i.test(raw)) {
+    return "Session ใช้ไม่ได้ ต้องล็อกอินบัญชี Telegram ใหม่";
+  }
+  return "บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน";
 }
 
 function extractTelegramError(error) {
@@ -885,6 +964,62 @@ async function appendRunLog(entry) {
   }
 }
 
+async function appendImportDiagnosticLog(entry) {
+  const record = { at: nowIso(), ...entry };
+  try {
+    await fsp.mkdir(path.dirname(FILES.importDiagnosticLog), { recursive: true });
+    await fsp.appendFile(FILES.importDiagnosticLog, `${JSON.stringify(record)}\n`, "utf8");
+  } catch (error) {
+    warnStateWriteFailure(FILES.importDiagnosticLog, error);
+  }
+  return record;
+}
+
+async function readImportDiagnosticLog(limit = 50) {
+  if (!fs.existsSync(FILES.importDiagnosticLog)) return [];
+  const raw = await fsp.readFile(FILES.importDiagnosticLog, "utf8").catch(() => "");
+  const rows = raw
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  if (limit === "all") return rows;
+  const count = Math.max(1, Math.min(500, Math.floor(Number(limit || 50))));
+  return rows.slice(-count);
+}
+
+function buildImportDiagnosticSummary(records = []) {
+  const list = Array.isArray(records) ? records.filter(Boolean) : [];
+  const latest = list[list.length - 1] || null;
+  const ratioRows = list.filter((entry) => Number.isFinite(Number(entry.retryRatio))).slice(-20);
+  const avgRetryRatio = ratioRows.length
+    ? ratioRows.reduce((sum, entry) => sum + Number(entry.retryRatio || 0), 0) / ratioRows.length
+    : 0;
+  const maxRetryRatio = ratioRows.length
+    ? Math.max(...ratioRows.map((entry) => Number(entry.retryRatio || 0)))
+    : 0;
+  return {
+    lastAt: latest?.at || "",
+    lastJobId: latest?.jobId || "",
+    lastAccountLabel: latest?.accountLabel || "",
+    totalCalls: list.length,
+    avgRetryRatio,
+    maxRetryRatio,
+    lastImportedCount: Number(latest?.importedCount || 0),
+    lastUsersCount: Number(latest?.usersCount || 0),
+    lastRetryContactsCount: Number(latest?.retryContactsCount || 0),
+    lastContactsInCall: Number(latest?.contactsInCall || 0),
+    lastPerRunLimit: Number(latest?.perRunLimit || 0),
+    lastChunkSize: Number(latest?.chunkSize || 0),
+  };
+}
+
 async function loadSettings() {
   const saved = await readJson(FILES.settings, DEFAULT_SETTINGS);
   return { ...DEFAULT_SETTINGS, ...(saved || {}) };
@@ -1005,25 +1140,25 @@ async function resetAccountSession(accountId, message = "ล้าง session �
 
 async function ensureAuthorizedAccountClient(account) {
   const accountId = String(account?.id || "");
-  if (!accountId) throw makeAccountAuthError("ไม่พบบัญชีที่เลือก", "auth_invalid");
-  if (!String(account?.apiId || "").trim()) throw makeAccountAuthError("บัญชีนี้ยังไม่ได้ตั้งค่า API_ID กรุณาตรวจสอบบัญชี", "auth_invalid");
+  if (!accountId) throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
+  if (!String(account?.apiId || "").trim()) throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
 
   let apiHash = "";
   try {
     apiHash = decryptText(account.apiHashEnc || "").trim();
   } catch {
     await markAccountForRelogin(accountId, "API_HASH ของบัญชีนี้ถอดรหัสไม่ได้ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
-    throw makeAccountAuthError("API_HASH ของบัญชีนี้ถอดรหัสไม่ได้ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
   }
   if (!apiHash) {
     await markAccountForRelogin(accountId, "API_HASH ของบัญชีนี้ไม่ครบ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
-    throw makeAccountAuthError("API_HASH ของบัญชีนี้ไม่ครบ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
   }
 
   const { sessionString } = await loadAccountSessionString(account);
   if (!sessionString) {
     await markAccountForRelogin(accountId, "บัญชีนี้ยังไม่มี session ที่ใช้งานได้ กรุณาล็อกอินใหม่", "needs_relogin");
-    throw makeAccountAuthError("บัญชีนี้ยังไม่มี session ที่ใช้งานได้ กรุณาล็อกอินใหม่", "needs_relogin");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "needs_relogin");
   }
 
   const cached = activeClients.get(clientMapKey(account.id));
@@ -1046,15 +1181,16 @@ async function ensureAuthorizedAccountClient(account) {
     }
     const friendly = "session ใช้งานไม่ได้ กรุณาล็อกอินใหม่";
     if (isAuthSessionError(error)) {
-      await markAccountForRelogin(accountId, friendly, "needs_relogin");
-      throw makeAccountAuthError(friendly, "needs_relogin");
+      const message = authRequiredMessage(error);
+      await markAccountForRelogin(accountId, message, /UNSUPPORTED STATE OR UNABLE TO AUTHENTICATE DATA/i.test(normalizeErrorMessage(error)) ? "auth_invalid" : "needs_relogin");
+      throw makeAuthRequiredError(message, /UNSUPPORTED STATE OR UNABLE TO AUTHENTICATE DATA/i.test(normalizeErrorMessage(error)) ? "auth_invalid" : "needs_relogin");
     }
     throw error;
   }
   if (!authorized) {
     try { await client.disconnect(); } catch {}
     await markAccountForRelogin(accountId, "session ของบัญชีนี้หมดอายุแล้ว กรุณาล็อกอินใหม่", "needs_relogin");
-    throw makeAccountAuthError("session ของบัญชีนี้หมดอายุแล้ว กรุณาล็อกอินใหม่", "needs_relogin");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "needs_relogin");
   }
 
   await updateAccountById(accountId, (current) => ({
@@ -1302,6 +1438,7 @@ function dynamicRowsToCsv(rows, preferredColumns = []) {
 async function saveIntakeOutputs(filename, result, options = {}) {
   const jobLabel = normalizeJobLabel(options.jobLabel, filename);
   const jobNote = normalizeJobNote(options.jobNote);
+  const cleanReadyPath = FILES.cleanReadyCsv;
   const meta = {
     fileName: filename,
     originalFilename: filename,
@@ -1319,7 +1456,7 @@ async function saveIntakeOutputs(filename, result, options = {}) {
     },
     preview: result.cleanRows.slice(0, 30),
   };
-  await fsp.writeFile(FILES.cleanReadyCsv, cleanRowsToCsv(result.cleanRows), "utf8");
+  await fsp.writeFile(cleanReadyPath, cleanRowsToCsv(result.cleanRows), "utf8");
   await fsp.writeFile(FILES.invalidRowsCsv, simpleRowsToCsv(result.invalidRows, ["rowNumber", "name", "rawPhone", "reason"]), "utf8");
   await fsp.writeFile(FILES.duplicatePhonesCsv, simpleRowsToCsv(result.duplicateRows, ["rowNumber", "name", "rawPhone", "normalizedPhone", "reason"]), "utf8");
   await fsp.writeFile(
@@ -1347,7 +1484,23 @@ async function saveIntakeOutputs(filename, result, options = {}) {
   logInfo(
     `Cleaner summary label=${meta.jobLabel || "-"} total=${meta.totalRows || 0} ready=${meta.readyRows || 0} invalid=${meta.invalidRows || 0} duplicate=${meta.duplicateRows || 0} phoneColumn=${meta.detectedPhoneColumn || "-"}`
   );
+  logInfo(`UPLOAD CLEAN_READY PATH ${safePathForResponse(cleanReadyPath)}`);
+  logInfo(`UPLOAD CLEAN_READY EXISTS ${fs.existsSync(cleanReadyPath)}`);
   return meta;
+}
+
+async function buildCleanReadyState(systemId = currentSystemId(), summary = null) {
+  const id = normalizeSystemId(systemId) || DEFAULT_SYSTEM_ID;
+  const cleanReadyPath = getSystemPaths(id).files.cleanReadyCsv;
+  const fallback = summary || await readJson(getSystemPaths(id).files.intakeLatest, null) || {};
+  return {
+    systemId: id,
+    cleanReadyExists: fs.existsSync(cleanReadyPath),
+    cleanReadyPath: safePathForResponse(cleanReadyPath),
+    readyRows: Number(fallback.readyRows || 0),
+    invalidRows: Number(fallback.invalidRows || 0),
+    duplicateRows: Number(fallback.duplicateRows || 0),
+  };
 }
 
 async function loadCleanRows(systemId = currentSystemId()) {
@@ -1376,16 +1529,18 @@ function makeContactFirstName(jobLabel, alias, row) {
 function buildContacts(rows, jobLabel = "", aliasPool = []) {
   const pool = Array.isArray(aliasPool) && aliasPool.length ? aliasPool : buildAliasPool("A", 8);
   return rows.map((row, index) => {
-    const clientId = BigInt(Date.now()) * 1000n + BigInt(index + 1);
+    const clientId = nextContactClientId();
     const sourceIndex = Math.max(1, Number(row?.sourceIndex || index + 1));
     const alias = pool[(sourceIndex - 1) % pool.length];
+    const normalizedPhone = row.normalizedPhone || row.phone || "";
     return {
       ...row,
+      normalizedPhone,
       clientId,
       contactAlias: alias,
       contact: new Api.InputPhoneContact({
         clientId,
-        phone: row.normalizedPhone,
+        phone: normalizedPhone,
         firstName: makeContactFirstName(jobLabel, alias, row),
         lastName: "",
       }),
@@ -1393,13 +1548,76 @@ function buildContacts(rows, jobLabel = "", aliasPool = []) {
   });
 }
 
-async function importBatch(client, batchRows, jobLabel = "", aliasPool = []) {
-  const contacts = buildContacts(batchRows, jobLabel, aliasPool);
-  const result = await client.invoke(
-    new Api.contacts.ImportContacts({
-      contacts: contacts.map((item) => item.contact),
-    })
-  );
+async function importBatch(client, batchRows, jobLabel = "", aliasPool = [], diagnostic = {}) {
+  const sourceIndexes = (batchRows || [])
+    .map((row) => Number(row?.sourceIndex || 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const sourceIndexStart = sourceIndexes.length ? Math.min(...sourceIndexes) : 0;
+  const sourceIndexEnd = sourceIndexes.length ? Math.max(...sourceIndexes) : 0;
+  const validRows = [];
+  const invalidRows = [];
+  for (const row of batchRows || []) {
+    const phoneCheck = validateCheckerPhone(row);
+    if (!phoneCheck.ok) {
+      invalidRows.push(makeCheckerResultRow(row, "INVALID", {
+        normalizedPhone: row?.normalizedPhone || row?.phone || "",
+        reason: phoneCheck.reason,
+      }));
+    } else {
+      validRows.push({ ...row, normalizedPhone: phoneCheck.normalizedPhone, phone: phoneCheck.normalizedPhone });
+    }
+  }
+
+  if (!validRows.length) {
+    logInfo(`ImportContacts result imported=0 retryContacts=0 users=0 invalid=${invalidRows.length}`);
+    return {
+      rows: invalidRows,
+      importedCount: 0,
+      retryContacts: [],
+      usersCount: 0,
+      invalidCount: invalidRows.length,
+    };
+  }
+
+  const contacts = buildContacts(validRows, jobLabel, aliasPool);
+  let result;
+  const startedAt = Date.now();
+  try {
+    result = await client.invoke(
+      new Api.contacts.ImportContacts({
+        contacts: contacts.map((item) => item.contact),
+      })
+    );
+  } catch (error) {
+    await appendImportDiagnosticLog({
+      systemId: currentSystemId(),
+      accountId: diagnostic.accountId || "",
+      accountLabel: diagnostic.accountLabel || "",
+      accountPhoneMasked: maskPhone(diagnostic.accountPhone || ""),
+      jobId: diagnostic.jobId || "",
+      jobLabel: diagnostic.jobLabel || jobLabel || "",
+      batchNumber: diagnostic.batchNumber || 0,
+      batchStart: diagnostic.batchStart || 0,
+      batchEnd: diagnostic.batchEnd || 0,
+      sourceIndexStart,
+      sourceIndexEnd,
+      perRunLimit: Number(diagnostic.perRunLimit || 0),
+      chunkSize: Number(diagnostic.chunkSize || 0),
+      contactsInCall: contacts.length,
+      importedCount: 0,
+      usersCount: 0,
+      retryContactsCount: 0,
+      yesCount: 0,
+      noCount: 0,
+      retryCount: 0,
+      retryRatio: null,
+      floodWaitSec: parseFloodSeconds(error?.message || error?.errorMessage || error),
+      errorCode: String(error?.code || error?.errorCode || error?.name || ""),
+      errorMessage: sanitizeDiagnosticErrorMessage(error),
+      durationMs: Date.now() - startedAt,
+    });
+    throw error;
+  }
 
   const usersById = new Map();
   for (const user of result.users || []) usersById.set(toSafeStringId(user.id), user);
@@ -1420,34 +1638,62 @@ async function importBatch(client, batchRows, jobLabel = "", aliasPool = []) {
 
   const retrySet = new Set((result.retryContacts || []).map((value) => toSafeStringId(value)));
 
+  logInfo(
+    `ImportContacts result imported=${Array.isArray(result.imported) ? result.imported.length : 0} retryContacts=${Array.isArray(result.retryContacts) ? result.retryContacts.length : 0} users=${Array.isArray(result.users) ? result.users.length : 0} invalid=${invalidRows.length}`
+  );
+
   const rows = contacts.map((item) => {
     const clientId = toSafeStringId(item.clientId);
     const matched = matchedByClientId.get(clientId);
     const isRetry = retrySet.has(clientId);
-    return withSegmentation({
-      sourceIndex: item.sourceIndex,
-      name: item.name,
-      rawPhone: item.rawPhone,
-      normalizedPhone: item.normalizedPhone,
-      status: matched ? "YES" : isRetry ? "RETRY" : "NO",
-      hasTelegram: Boolean(matched),
-      retry: isRetry,
+    return makeCheckerResultRow(item, matched ? "YES" : isRetry ? "RETRY" : "NO", {
+      clientId,
       telegramUserId: matched?.userId || "",
       telegramUsername: matched?.username || "",
       telegramFirstName: matched?.firstName || "",
       telegramLastName: matched?.lastName || "",
       telegramPhone: matched?.phone || "",
-      clientId,
-      sourceLabel: item.sourceLabel || "unknown",
-      consentStatus: item.consentStatus || "unknown",
-      customerStatus: item.customerStatus || "new",
-    }, item.sourceLabel || "unknown");
+    });
+  });
+  const yesCount = rows.filter((row) => row.status === "YES").length;
+  const noCount = rows.filter((row) => row.status === "NO").length;
+  const retryCount = rows.filter((row) => row.status === "RETRY").length;
+  const retryRatio = rows.length ? retryCount / rows.length : 0;
+  const diagnosticRecord = await appendImportDiagnosticLog({
+    systemId: currentSystemId(),
+    accountId: diagnostic.accountId || "",
+    accountLabel: diagnostic.accountLabel || "",
+    accountPhoneMasked: maskPhone(diagnostic.accountPhone || ""),
+    jobId: diagnostic.jobId || "",
+    jobLabel: diagnostic.jobLabel || jobLabel || "",
+    batchNumber: diagnostic.batchNumber || 0,
+    batchStart: diagnostic.batchStart || 0,
+    batchEnd: diagnostic.batchEnd || 0,
+    sourceIndexStart,
+    sourceIndexEnd,
+    perRunLimit: Number(diagnostic.perRunLimit || 0),
+    chunkSize: Number(diagnostic.chunkSize || 0),
+    contactsInCall: contacts.length,
+    importedCount: Array.isArray(result.imported) ? result.imported.length : 0,
+    usersCount: Array.isArray(result.users) ? result.users.length : 0,
+    retryContactsCount: retrySet.size,
+    yesCount,
+    noCount,
+    retryCount,
+    retryRatio,
+    floodWaitSec: 0,
+    errorCode: "",
+    errorMessage: "",
+    durationMs: Date.now() - startedAt,
   });
 
   return {
-    rows,
+    rows: [...rows, ...invalidRows],
     importedCount: Array.isArray(result.imported) ? result.imported.length : 0,
     retryContacts: Array.from(retrySet),
+    usersCount: Array.isArray(result.users) ? result.users.length : 0,
+    invalidCount: invalidRows.length,
+    diagnostic: diagnosticRecord,
   };
 }
 
@@ -1548,6 +1794,7 @@ async function saveSegmentExports(rows) {
   const yesRows = byStatus(allRows, "YES");
   const noRows = byStatus(allRows, "NO");
   const retryRows = byStatus(allRows, "RETRY");
+  const invalidRows = byStatus(allRows, "INVALID");
   const marketingAllowedRows = byNextAction(allRows, "MARKETING_ALLOWED");
   const winbackRows = byNextAction(allRows, "WINBACK");
   const retryLaterRows = byNextAction(allRows, "RETRY_LATER");
@@ -1559,6 +1806,8 @@ async function saveSegmentExports(rows) {
     writeJson(FILES.noOnlyJson, noRows),
     fsp.writeFile(FILES.retryOnlyCsv, rowsToCsv(retryRows), "utf8"),
     writeJson(FILES.retryOnlyJson, retryRows),
+    fsp.writeFile(FILES.invalidOnlyCsv, rowsToCsv(invalidRows), "utf8"),
+    writeJson(FILES.invalidOnlyJson, invalidRows),
     fsp.writeFile(FILES.marketingAllowedCsv, rowsToCsv(marketingAllowedRows), "utf8"),
     writeJson(FILES.marketingAllowedJson, marketingAllowedRows),
     fsp.writeFile(FILES.winbackCsv, rowsToCsv(winbackRows), "utf8"),
@@ -1570,22 +1819,23 @@ async function saveSegmentExports(rows) {
 
 function buildSegmentationSummary(rows) {
   const list = Array.isArray(rows) ? rows : [];
-  const statusCount = { YES: 0, NO: 0, RETRY: 0 };
+  const statusCount = { YES: 0, NO: 0, RETRY: 0, INVALID: 0 };
   const consentCount = { yes: 0, no: 0, unknown: 0 };
   const sourceMap = new Map();
 
   for (const row of list) {
     const status = String(row?.status || "").toUpperCase();
-    if (status === "YES" || status === "NO" || status === "RETRY") statusCount[status] += 1;
+    if (status === "YES" || status === "NO" || status === "RETRY" || status === "INVALID") statusCount[status] += 1;
     const consent = normalizeConsentStatus(row?.consentStatus);
     consentCount[consent] += 1;
 
     const sourceLabel = normalizeSourceLabel(row?.sourceLabel, "unknown");
-    const item = sourceMap.get(sourceLabel) || { sourceLabel, total: 0, yes: 0, no: 0, retry: 0 };
+    const item = sourceMap.get(sourceLabel) || { sourceLabel, total: 0, yes: 0, no: 0, retry: 0, invalid: 0 };
     item.total += 1;
     if (status === "YES") item.yes += 1;
     if (status === "NO") item.no += 1;
     if (status === "RETRY") item.retry += 1;
+    if (status === "INVALID") item.invalid += 1;
     sourceMap.set(sourceLabel, item);
   }
 
@@ -1723,6 +1973,15 @@ function buildAlerts(job, latestMeta, settings, runLog = [], notices = []) {
     });
   }
 
+  if (displayQueueStatus(job?.status) === 'AUTH_REQUIRED') {
+    alerts.push({
+      level: 'warning',
+      code: 'AUTH_REQUIRED',
+      title: 'ต้องล็อกอินบัญชี Telegram ใหม่',
+      message: job?.authRequiredMessage || 'บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน'
+    });
+  }
+
   if (displayQueueStatus(job?.status) === 'COMPLETED') {
     alerts.push({ level: 'success', code: 'COMPLETED', title: 'คิวนี้ทำครบแล้ว', message: 'ดาวน์โหลดผลรวม หรือสร้างคิวใหม่จากไฟล์ที่เหลือได้เลย' });
   }
@@ -1754,6 +2013,7 @@ async function buildDashboardPayload() {
   ]);
   const latestMeta = latestBatch?.meta || null;
   const allRows = await readJson(FILES.allJson, []);
+  const importLog = await readImportDiagnosticLog(50);
   const segmentation = buildSegmentationSummary(allRows);
   const appState = accountsState?.appState || {};
 
@@ -1794,6 +2054,7 @@ async function buildDashboardPayload() {
       yes: Number(job?.matchedCountTotal || 0),
       no: Number(job?.unmatchedCountTotal || 0),
       retry: Number(job?.retryCountTotal || 0),
+      invalid: Number(job?.invalidCountTotal || 0),
       floodWaitCount: Number(job?.floodWaitCount || 0),
       progressPct,
       account: job?.lockedAccountLabel || '-',
@@ -1807,6 +2068,10 @@ async function buildDashboardPayload() {
     alerts: buildAlerts(job, latestMeta, settings, runLog, recoveryNotices),
     events,
     recovery: [...recoveryNotices].slice(-10).reverse(),
+    importDiagnostics: {
+      summary: buildImportDiagnosticSummary(importLog),
+      recent: importLog,
+    },
     lastJob: buildJobSnapshot(job) || appState.lastJobMeta || null,
     downloads: {
       processedCsv: fs.existsSync(FILES.processedCsv),
@@ -1822,6 +2087,8 @@ async function buildDashboardPayload() {
       noOnlyJson: fs.existsSync(FILES.noOnlyJson),
       retryOnlyCsv: fs.existsSync(FILES.retryOnlyCsv),
       retryOnlyJson: fs.existsSync(FILES.retryOnlyJson),
+      invalidOnlyCsv: fs.existsSync(FILES.invalidOnlyCsv),
+      invalidOnlyJson: fs.existsSync(FILES.invalidOnlyJson),
       marketingAllowedCsv: fs.existsSync(FILES.marketingAllowedCsv),
       marketingAllowedJson: fs.existsSync(FILES.marketingAllowedJson),
       winbackCsv: fs.existsSync(FILES.winbackCsv),
@@ -2045,6 +2312,61 @@ async function getLockedAccountForJob(job) {
   return account;
 }
 
+async function inspectRunNextAuthState(job) {
+  const { accounts, appState } = await loadAccountsState();
+  const selectedAccountId = String(appState?.selectedAccountId || "");
+  const account = accounts.find((item) => item.id === selectedAccountId) || null;
+  const sessionPath = account?.id ? sessionFilePath(account.id) : "";
+  const sessionPathExists = sessionPath ? fs.existsSync(sessionPath) : false;
+  logInfo(
+    `Run-next preflight selectedAccountId=${selectedAccountId || "-"} accountStatus=${account?.status || "missing"} sessionPathExists=${sessionPathExists} hasSessionEnc=${Boolean(account?.sessionEnc)} jobStatus=${job?.status || "-"} totalRows=${Number(job?.totalRows || 0)} processedRows=${Number(job?.processedRows || 0)}`
+  );
+  return { accounts, appState, selectedAccountId, account, sessionPath, sessionPathExists };
+}
+
+async function assertRunNextAuthReady(job) {
+  const state = await inspectRunNextAuthState(job);
+  const { selectedAccountId, account, sessionPathExists } = state;
+  if (!selectedAccountId) throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "needs_relogin");
+  if (!account) throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
+  if (job?.lockedAccountId && selectedAccountId !== job.lockedAccountId) {
+    throw new Error("บัญชีที่เลือกอยู่ไม่ตรงกับบัญชีที่ล็อกกับคิวนี้ กรุณากด 'ใช้บัญชีนี้' ให้ตรงก่อนรัน");
+  }
+  if (!String(account.apiId || "").trim()) {
+    await markAccountForRelogin(account.id, "API_ID ของบัญชีนี้ไม่ครบ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
+  }
+  try {
+    const apiHash = decryptText(account.apiHashEnc || "").trim();
+    if (!apiHash) {
+      await markAccountForRelogin(account.id, "API_HASH ของบัญชีนี้ไม่ครบ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
+      throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
+    }
+  } catch (error) {
+    if (error?.isAccountAuthError) throw error;
+    await markAccountForRelogin(account.id, "API_HASH ของบัญชีนี้ถอดรหัสไม่ได้ กรุณารีล็อกอินบัญชีใหม่", "auth_invalid");
+    throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "auth_invalid");
+  }
+
+  try {
+    const { sessionString, source } = await loadAccountSessionString(account);
+    if (!sessionString) {
+      await markAccountForRelogin(account.id, "บัญชีนี้ยังไม่มี session ที่ใช้งานได้ กรุณาล็อกอินใหม่", "needs_relogin");
+      throw makeAuthRequiredError("บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน", "needs_relogin");
+    }
+    logInfo(`Run-next preflight sessionSource=${source || "unknown"} sessionPathExists=${sessionPathExists}`);
+  } catch (error) {
+    if (error?.isAccountAuthError || isAuthSessionError(error)) {
+      const message = authRequiredMessage(error);
+      await markAccountForRelogin(account.id, message, /UNSUPPORTED STATE OR UNABLE TO AUTHENTICATE DATA/i.test(normalizeErrorMessage(error)) ? "auth_invalid" : "needs_relogin");
+      throw makeAuthRequiredError(message, /UNSUPPORTED STATE OR UNABLE TO AUTHENTICATE DATA/i.test(normalizeErrorMessage(error)) ? "auth_invalid" : "needs_relogin");
+    }
+    throw error;
+  }
+
+  return account;
+}
+
 async function findPhoneUsageInOtherSystem(phone, ownSystemId = currentSystemId()) {
   const normalizedPhone = String(phone || "").trim();
   const own = normalizeSystemId(ownSystemId) || DEFAULT_SYSTEM_ID;
@@ -2085,24 +2407,35 @@ class MissingCleanReadyError extends Error {
 async function getCleanReadyDebug(systemId = currentSystemId()) {
   const id = normalizeSystemId(systemId) || DEFAULT_SYSTEM_ID;
   const paths = getSystemPaths(id);
+  const expectedCleanReadyPath = paths.files.cleanReadyCsv;
   const [latestIntakeSummary, summaryFallback] = await Promise.all([
     readJson(paths.files.intakeLatest, null),
     readJson(paths.files.intakeSummaryJson, null),
   ]);
   return {
     systemId: id,
-    expectedCleanReadyPath: paths.files.cleanReadyCsv,
-    existsCleanReady: fs.existsSync(paths.files.cleanReadyCsv),
+    expectedCleanReadyPath: safePathForResponse(expectedCleanReadyPath),
+    cleanReadyPath: safePathForResponse(expectedCleanReadyPath),
+    existsCleanReady: fs.existsSync(expectedCleanReadyPath),
     latestIntakeSummary: latestIntakeSummary || summaryFallback || null,
   };
 }
 
 async function createJobFromLatestClean(systemId = currentSystemId()) {
   const id = normalizeSystemId(systemId) || DEFAULT_SYSTEM_ID;
+  return withSystem(id, async () => {
   const cleanReadyDebug = await getCleanReadyDebug(id);
-  if (!cleanReadyDebug.existsCleanReady) throw new MissingCleanReadyError(cleanReadyDebug);
+  logInfo(`CREATE JOB EXPECTED CLEAN_READY PATH ${cleanReadyDebug.cleanReadyPath}`);
+  logInfo(`CREATE JOB CLEAN_READY EXISTS ${cleanReadyDebug.existsCleanReady}`);
+  if (!cleanReadyDebug.existsCleanReady) {
+    logInfo(`CREATE JOB RESULT missing_clean_ready system=${id} path=${cleanReadyDebug.cleanReadyPath}`);
+    throw new MissingCleanReadyError(cleanReadyDebug);
+  }
   const cleanRows = await loadCleanRows(id);
-  if (!cleanRows.length) throw new Error("clean_ready.csv ไม่มีข้อมูลพร้อมใช้");
+  if (!cleanRows.length) {
+    logInfo(`CREATE JOB RESULT empty_clean_ready system=${id} path=${cleanReadyDebug.cleanReadyPath}`);
+    throw new Error("clean_ready.csv ไม่มีข้อมูลพร้อมใช้");
+  }
   const selectedAccount = await getSelectedAccount(true);
   await assertAccountPhoneNotRunningElsewhere(selectedAccount);
   const settings = await loadSettings();
@@ -2146,6 +2479,7 @@ async function createJobFromLatestClean(systemId = currentSystemId()) {
     matchedCountTotal: 0,
     unmatchedCountTotal: 0,
     retryCountTotal: 0,
+    invalidCountTotal: 0,
     lastBatchNumber: 0,
     lastBatchStart: 0,
     lastBatchEnd: 0,
@@ -2178,7 +2512,9 @@ async function createJobFromLatestClean(systemId = currentSystemId()) {
     lockedAccount: job.lockedAccountLabel,
   });
 
+  logInfo(`CREATE JOB RESULT ok system=${id} jobId=${job.id} totalRows=${job.totalRows}`);
   return job;
+  });
 }
 
 async function processNextBatch() {
@@ -2221,23 +2557,43 @@ async function processNextBatch() {
   if (!sourceBatch.length) throw new Error("ไม่พบข้อมูลในรอบถัดไป");
 
   const chunks = chunkArray(sourceBatch, Number(job.chunkSize || 1));
+  const batchNumber = Math.floor(start / Number(job.perRunLimit || 100)) + 1;
   const currentBatchRows = [];
+  const importDiagnostics = [];
   let importedCount = 0;
   let batchRetryCount = 0;
   const aliasPool = Array.isArray(job.aliasPool) && job.aliasPool.length
     ? job.aliasPool
     : buildAliasPool(deriveAliasGroup(job.jobLabel, job.jobNote), 8);
 
+  let callOffset = 0;
   for (const chunk of chunks) {
-    const result = await importBatch(client, chunk, job.jobLabel || job.sourceFile || "งาน", aliasPool);
+    const batchStart = start + callOffset + 1;
+    const batchEnd = start + callOffset + chunk.length;
+    callOffset += chunk.length;
+    const result = await importBatch(client, chunk, job.jobLabel || job.sourceFile || "งาน", aliasPool, {
+      systemId: currentSystemId(),
+      accountId: account.id,
+      accountLabel: account.label,
+      accountPhone: account.phone,
+      jobId: job.id,
+      jobLabel: job.jobLabel || job.sourceFile || "",
+      batchNumber,
+      batchStart,
+      batchEnd,
+      perRunLimit: Number(job.perRunLimit || 0),
+      chunkSize: Number(job.chunkSize || 0),
+    });
     currentBatchRows.push(...result.rows);
     importedCount += result.importedCount;
     batchRetryCount += result.rows.filter((row) => row.status === "RETRY").length;
+    if (result.diagnostic) importDiagnostics.push(result.diagnostic);
   }
 
   const matchedCount = currentBatchRows.filter((row) => row.status === "YES").length;
   const retryCount = currentBatchRows.filter((row) => row.status === "RETRY").length;
   const unmatchedCount = currentBatchRows.filter((row) => row.status === "NO").length;
+  const invalidCount = currentBatchRows.filter((row) => row.status === "INVALID").length;
 
   const allRows = await readJson(FILES.allJson, []);
   allRows.push(...currentBatchRows);
@@ -2254,7 +2610,6 @@ async function processNextBatch() {
   };
   chunkStates[activeChunkIndex] = updatedChunk;
   const nextChunk = chunkStates.find((item) => item.status !== "DONE" && item.status !== "FAILED") || null;
-  const batchNumber = Math.floor(start / Number(job.perRunLimit || 100)) + 1;
   const retryRatio = currentBatchRows.length ? retryCount / currentBatchRows.length : 0;
 
   let nextStatus = nextChunk ? "ready" : "completed";
@@ -2286,6 +2641,7 @@ async function processNextBatch() {
     matchedCountTotal: Number(job.matchedCountTotal || 0) + matchedCount,
     unmatchedCountTotal: Number(job.unmatchedCountTotal || 0) + unmatchedCount,
     retryCountTotal: Number(job.retryCountTotal || 0) + retryCount,
+    invalidCountTotal: Number(job.invalidCountTotal || 0) + invalidCount,
     lastBatchNumber: batchNumber,
     lastBatchStart: start + 1,
     lastBatchEnd: end,
@@ -2321,9 +2677,11 @@ async function processNextBatch() {
       matchedCount,
       unmatchedCount,
       retryCount,
+      invalidCount,
       matchedCountTotal: nextJob.matchedCountTotal,
       unmatchedCountTotal: nextJob.unmatchedCountTotal,
       retryCountTotal: nextJob.retryCountTotal,
+      invalidCountTotal: nextJob.invalidCountTotal,
       importedCount,
       generatedAt: now,
       done: nextJob.status === "completed",
@@ -2357,6 +2715,7 @@ async function processNextBatch() {
     matchedCount,
     unmatchedCount,
     retryCount,
+    invalidCount,
     retryRatio,
     processedRows: nextJob.processedRows,
     floodWaitCount: Number(nextJob.floodWaitCount || 0),
@@ -2369,11 +2728,18 @@ async function processNextBatch() {
     yes: nextJob.matchedCountTotal,
     no: nextJob.unmatchedCountTotal,
     retry: nextJob.retryCountTotal,
+    invalid: nextJob.invalidCountTotal,
     floodWaitCount: Number(nextJob.floodWaitCount || 0),
   });
   logInfo(
-    `Run summary processed=${nextJob.processedRows} yes=${nextJob.matchedCountTotal} no=${nextJob.unmatchedCountTotal} retry=${nextJob.retryCountTotal} floodWaitCount=${Number(nextJob.floodWaitCount || 0)}`
+    `Run summary processed=${nextJob.processedRows} yes=${nextJob.matchedCountTotal} no=${nextJob.unmatchedCountTotal} retry=${nextJob.retryCountTotal} invalid=${nextJob.invalidCountTotal} floodWaitCount=${Number(nextJob.floodWaitCount || 0)}`
   );
+  if (importDiagnostics.length) {
+    const diagnosticSummary = buildImportDiagnosticSummary(importDiagnostics);
+    logInfo(
+      `Import diagnostic summary system=${currentSystemId()} jobId=${job.id} batch=${batchNumber} avgRetryRatio=${diagnosticSummary.avgRetryRatio.toFixed(2)} imported=${diagnosticSummary.lastImportedCount} users=${diagnosticSummary.lastUsersCount} retryContacts=${diagnosticSummary.lastRetryContactsCount} calls=${diagnosticSummary.totalCalls} contactsInLastCall=${diagnosticSummary.lastContactsInCall}`
+    );
+  }
 
   return { latestBatch: latestPayload, job: nextJob };
 }
@@ -2537,6 +2903,7 @@ async function writeJobStateMirror(job) {
     yes: Number(job.matchedCountTotal || 0),
     no: Number(job.unmatchedCountTotal || 0),
     retry: Number(job.retryCountTotal || 0),
+    invalid: Number(job.invalidCountTotal || 0),
     status: String(job.status || ""),
     retryRatio: Number(job.lastRetryRatio || 0),
     lastRunAt: job.lastGeneratedAt || "",
@@ -2546,6 +2913,28 @@ async function writeJobStateMirror(job) {
     updatedAt: nowIso(),
   };
   return writeStateJsonBestEffort(path.join(dir, "job_state.json"), state);
+}
+
+async function markJobAuthRequired(job, message = "บัญชี Telegram ยังไม่พร้อม กรุณารีล็อกอิน") {
+  if (!job) return null;
+  await saveSettings({ autoRun: false }).catch((error) => warnStateWriteFailure(FILES.settings, error));
+  const nextJob = {
+    ...job,
+    status: "AUTH_REQUIRED",
+    autoStatus: "OFF",
+    nextRunAt: "",
+    authRequiredAt: nowIso(),
+    authRequiredMessage: message,
+    updatedAt: nowIso(),
+  };
+  await saveCurrentJob(nextJob);
+  await appendRunLog({
+    type: "auth_required",
+    jobId: job.id,
+    message,
+    selectedAccountId: job.selectedAccountId || job.lockedAccountId || "",
+  });
+  return nextJob;
 }
 
 async function splitCsvFile(filePath, rowsPerFile = 50000) {
@@ -2595,21 +2984,25 @@ async function runNextForCurrentSystem(res) {
     if (staleChecked?.status === "paused_flood_stale") {
       return res.status(409).json({ error: "คิวถูกพักเพราะ FloodWait ค้างนาน กรุณารีเซ็ต flood state ก่อน" });
     }
+    await assertRunNextAuthReady(staleChecked);
     const result = await processNextBatch();
     return res.json({ ok: true, message: "ทำรอบถัดไปเรียบร้อย", ...result });
   } catch (error) {
     const job = await getCurrentJob();
     if (job && (error?.isAccountAuthError || isAuthSessionError(error))) {
-      if (job.autoStatus !== "OFF" || job.status !== "paused") {
-        await saveCurrentJob({
-          ...job,
-          autoStatus: "OFF",
-          status: "paused",
-          updatedAt: nowIso(),
-        });
-      }
-      await appendRunLog({ type: "account_auth_invalid", jobId: job.id, message: extractTelegramError(error) });
-      return res.status(409).json({ error: extractTelegramError(error) || "session ใช้งานไม่ได้ กรุณาล็อกอินใหม่", code: "ACCOUNT_AUTH_INVALID" });
+      const message = error?.code === "AUTH_REQUIRED" || error?.type === "AUTH_REQUIRED"
+        ? (error.message || authRequiredMessage(error))
+        : authRequiredMessage(error);
+      const nextJob = await markJobAuthRequired(job, message);
+      await appendRunLog({ type: "account_auth_invalid", jobId: job.id, message });
+      return res.status(409).json({
+        ok: false,
+        type: "AUTH_REQUIRED",
+        code: "AUTH_REQUIRED",
+        message,
+        error: message,
+        job: nextJob,
+      });
     }
     if (job && parseFloodSeconds(error?.message)) {
       const nextJob = await handleFloodWait(job, error);
@@ -2702,6 +3095,47 @@ async function resumeAutoForCurrentSystem(res) {
   return res.json({ ok: true, settings, job: nextJob });
 }
 
+async function resumeManualForCurrentSystem(res) {
+  const job = await getCurrentJob();
+  if (!job) return res.status(404).json({ error: "ยังไม่มีคิวงาน" });
+  if (job.status === "paused_flood_stale") {
+    return res.status(409).json({ error: "คิวถูกพักเพราะ FloodWait ค้างนาน ห้ามปลดพักแบบ manual" });
+  }
+  if (job.status === "paused_too_many_retry") {
+    return res.status(409).json({ error: "คิวถูกพักเพราะ RETRY สูง ห้ามปลดพักแบบ manual" });
+  }
+  const waitTs = job.nextRunAt ? new Date(job.nextRunAt).getTime() : 0;
+  const waitingStatus = ["waiting_flood", "waiting_retry_cooldown", "paused_retry_cooldown"].includes(job.status);
+  if (waitingStatus && waitTs && Date.now() < waitTs) {
+    return res.status(409).json({ error: `คิวยังต้องรอถึง ${job.nextRunAt}` });
+  }
+  if (job.status !== "paused") return res.status(400).json({ error: "ปลดพักแบบ manual ได้เฉพาะคิวที่ paused เท่านั้น" });
+
+  const settings = await saveSettings({ autoRun: false });
+  const nextJob = {
+    ...job,
+    status: "ready",
+    autoStatus: "OFF",
+    nextRunAt: "",
+    updatedAt: nowIso(),
+  };
+  await saveCurrentJob(nextJob);
+  await appendRunLog({
+    type: "manual_resume",
+    jobId: job.id,
+    jobLabel: job.jobLabel || "",
+    fileName: job.fileName || job.sourceFile || "",
+    processedRows: Number(job.processedRows || 0),
+    remainingRows: Number(job.remainingRows || 0),
+  });
+  return res.json({
+    ok: true,
+    message: "ปลดพักคิวสำหรับตรวจมือแล้ว",
+    job: nextJob,
+    settings,
+  });
+}
+
 async function resetJobForCurrentSystem(res) {
   if (isSystemProcessing()) return res.status(409).json({ error: "ระบบนี้กำลังประมวลผลอยู่ ล้างคิวตอนนี้ไม่ได้" });
   try {
@@ -2721,6 +3155,8 @@ async function resetJobForCurrentSystem(res) {
       FILES.noOnlyJson,
       FILES.retryOnlyCsv,
       FILES.retryOnlyJson,
+      FILES.invalidOnlyCsv,
+      FILES.invalidOnlyJson,
       FILES.marketingAllowedCsv,
       FILES.marketingAllowedJson,
       FILES.winbackCsv,
@@ -2730,6 +3166,13 @@ async function resetJobForCurrentSystem(res) {
       FILES.autoState,
       FILES.remainingCsv,
       FILES.remainingXlsx,
+      FILES.cleanReadyCsv,
+      FILES.invalidRowsCsv,
+      FILES.duplicatePhonesCsv,
+      FILES.cleanDebugCsv,
+      FILES.cleanRejectsCsv,
+      FILES.intakeSummaryJson,
+      FILES.intakeLatest,
     ]) await unlinkIfExists(filePath);
     return res.json({ ok: true, message: "ล้างคิวและผลลัพธ์ของระบบนี้เรียบร้อย" });
   } catch (error) {
@@ -2741,6 +3184,8 @@ function getDownloadTarget(name) {
   const allowed = new Map([
     ["telegram_matches.csv", { path: FILES.latestCsv, displayName: "telegram_matches.csv" }],
     ["telegram_matches.json", { path: FILES.latestJson, displayName: "telegram_matches.json" }],
+    ["all.csv", { path: FILES.allCsv, displayName: "all.csv" }],
+    ["all.json", { path: FILES.allJson, displayName: "all.json" }],
     ["telegram_matches_all.csv", { path: FILES.allCsv, displayName: "telegram_matches_all.csv" }],
     ["telegram_matches_all.json", { path: FILES.allJson, displayName: "telegram_matches_all.json" }],
     ["retry_rows.csv", { path: FILES.retryCsv, displayName: "retry_rows.csv" }],
@@ -2756,11 +3201,16 @@ function getDownloadTarget(name) {
     ["processed.csv", { path: FILES.processedCsv, displayName: "processed_only.csv" }],
     ["processed.xlsx", { path: FILES.processedXlsx, displayName: "processed_only.xlsx" }],
     ["yes_only.csv", { path: FILES.yesOnlyCsv, displayName: "telegram_yes_only.csv" }],
+    ["yes.csv", { path: FILES.yesOnlyCsv, displayName: "yes.csv" }],
     ["yes_only.json", { path: FILES.yesOnlyJson, displayName: "telegram_yes_only.json" }],
     ["no_only.csv", { path: FILES.noOnlyCsv, displayName: "telegram_no_only.csv" }],
+    ["no.csv", { path: FILES.noOnlyCsv, displayName: "no.csv" }],
     ["no_only.json", { path: FILES.noOnlyJson, displayName: "telegram_no_only.json" }],
     ["retry_only.csv", { path: FILES.retryOnlyCsv, displayName: "telegram_retry_only.csv" }],
+    ["retry.csv", { path: FILES.retryOnlyCsv, displayName: "retry.csv" }],
     ["retry_only.json", { path: FILES.retryOnlyJson, displayName: "telegram_retry_only.json" }],
+    ["invalid.csv", { path: FILES.invalidOnlyCsv, displayName: "invalid.csv" }],
+    ["invalid.json", { path: FILES.invalidOnlyJson, displayName: "invalid.json" }],
     ["marketing_allowed.csv", { path: FILES.marketingAllowedCsv, displayName: "marketing_allowed_only.csv" }],
     ["marketing_allowed.json", { path: FILES.marketingAllowedJson, displayName: "marketing_allowed_only.json" }],
     ["winback.csv", { path: FILES.winbackCsv, displayName: "winback_only.csv" }],
@@ -2851,6 +3301,7 @@ async function buildSystemSummary(systemId) {
       yes: Number(job?.matchedCountTotal || 0),
       no: Number(job?.unmatchedCountTotal || 0),
       retry: Number(job?.retryCountTotal || 0),
+      invalid: Number(job?.invalidCountTotal || 0),
       jobId: job?.id || "",
       jobLabel: job?.jobLabel || "",
       processing: isSystemProcessing(systemId),
@@ -3087,7 +3538,7 @@ app.post("/api/accounts/:id/verify-code", async (req, res) => {
     await updateAccountById(accountId, (current) => ({
       ...current,
       sessionEnc: encryptText(sessionString),
-      status: "connected",
+      status: "ready",
       pendingPhoneCodeHash: "",
       pendingCodeType: "",
       pendingTimeout: 0,
@@ -3160,7 +3611,7 @@ app.post("/api/accounts/:id/verify-password", async (req, res) => {
     await updateAccountById(accountId, (current) => ({
       ...current,
       sessionEnc: encryptText(sessionString),
-      status: "connected",
+      status: "ready",
       pendingPhoneCodeHash: "",
       pendingCodeType: "",
       pendingTimeout: 0,
@@ -3251,7 +3702,14 @@ app.post("/api/intake/upload", upload.single("file"), async (req, res) => {
       jobNote: req.body?.jobNote,
       masterFile,
     });
-    res.json({ ok: true, message: "ล้างไฟล์เรียบร้อย", summary: meta, preview: meta.preview || [] });
+    const cleanReadyState = await buildCleanReadyState(currentSystemId(), meta);
+    res.json({
+      ok: true,
+      message: "ล้างไฟล์เรียบร้อย",
+      ...cleanReadyState,
+      summary: { ...meta, ...cleanReadyState },
+      preview: meta.preview || [],
+    });
   } catch (error) {
     res.status(400).json({ error: error.message || "ล้างไฟล์ไม่สำเร็จ" });
   }
@@ -3271,7 +3729,15 @@ app.post("/api/intake/import-from-path", async (req, res) => {
       jobNote: req.body?.jobNote,
       masterFile,
     });
-    res.json({ ok: true, message: "นำเข้าไฟล์จาก path สำเร็จ", source: resolved, summary: meta, preview: meta.preview || [] });
+    const cleanReadyState = await buildCleanReadyState(currentSystemId(), meta);
+    res.json({
+      ok: true,
+      message: "นำเข้าไฟล์จาก path สำเร็จ",
+      source: resolved,
+      ...cleanReadyState,
+      summary: { ...meta, ...cleanReadyState },
+      preview: meta.preview || [],
+    });
   } catch (error) {
     res.status(400).json({ error: error.message || "นำเข้าไฟล์จาก path ไม่สำเร็จ" });
   }
@@ -3303,7 +3769,7 @@ app.post("/api/intake/split-csv", async (req, res) => {
 app.get("/api/intake/latest", async (_req, res) => {
   const latest = await readJson(FILES.intakeLatest, null);
   if (!latest) return res.status(404).json({ error: "ยังไม่มีผลล้างไฟล์ล่าสุด" });
-  res.json(latest);
+  res.json({ ...latest, ...(await buildCleanReadyState(currentSystemId(), latest)) });
 });
 
 app.post("/api/jobs/create-from-clean", async (_req, res) => {
@@ -3312,7 +3778,10 @@ app.post("/api/jobs/create-from-clean", async (_req, res) => {
     const settings = await loadSettings();
     res.json({ ok: true, message: "สร้างคิวจาก clean_ready.csv แล้ว", job, settings });
   } catch (error) {
-    res.status(400).json({ error: error.message || "สร้างคิวไม่สำเร็จ" });
+    res.status(400).json({
+      error: error.message || "สร้างคิวไม่สำเร็จ",
+      ...(error?.details || {}),
+    });
   }
 });
 
@@ -3351,21 +3820,25 @@ app.post("/api/run-next", async (_req, res) => {
     if (staleChecked?.status === "paused_flood_stale") {
       return res.status(409).json({ error: "คิวถูกพักเพราะ FloodWait ค้างนาน กรุณารีเซ็ต flood state ก่อน" });
     }
+    await assertRunNextAuthReady(staleChecked);
     const result = await processNextBatch();
     res.json({ ok: true, message: "ทำรอบถัดไปเรียบร้อย", ...result });
   } catch (error) {
     const job = await getCurrentJob();
     if (job && (error?.isAccountAuthError || isAuthSessionError(error))) {
-      if (job.autoStatus !== "OFF" || job.status !== "paused") {
-        await saveCurrentJob({
-          ...job,
-          autoStatus: "OFF",
-          status: "paused",
-          updatedAt: nowIso(),
-        });
-      }
-      await appendRunLog({ type: "account_auth_invalid", jobId: job.id, message: extractTelegramError(error) });
-      return res.status(409).json({ error: extractTelegramError(error) || "session ใช้งานไม่ได้ กรุณาล็อกอินใหม่", code: "ACCOUNT_AUTH_INVALID" });
+      const message = error?.code === "AUTH_REQUIRED" || error?.type === "AUTH_REQUIRED"
+        ? (error.message || authRequiredMessage(error))
+        : authRequiredMessage(error);
+      const nextJob = await markJobAuthRequired(job, message);
+      await appendRunLog({ type: "account_auth_invalid", jobId: job.id, message });
+      return res.status(409).json({
+        ok: false,
+        type: "AUTH_REQUIRED",
+        code: "AUTH_REQUIRED",
+        message,
+        error: message,
+        job: nextJob,
+      });
     }
     if (job && parseFloodSeconds(error?.message)) {
       const nextJob = await handleFloodWait(job, error);
@@ -3530,6 +4003,8 @@ app.post("/api/reset-job", async (_req, res) => {
       FILES.noOnlyJson,
       FILES.retryOnlyCsv,
       FILES.retryOnlyJson,
+      FILES.invalidOnlyCsv,
+      FILES.invalidOnlyJson,
       FILES.marketingAllowedCsv,
       FILES.marketingAllowedJson,
       FILES.winbackCsv,
@@ -3539,6 +4014,13 @@ app.post("/api/reset-job", async (_req, res) => {
       FILES.autoState,
       FILES.remainingCsv,
       FILES.remainingXlsx,
+      FILES.cleanReadyCsv,
+      FILES.invalidRowsCsv,
+      FILES.duplicatePhonesCsv,
+      FILES.cleanDebugCsv,
+      FILES.cleanRejectsCsv,
+      FILES.intakeSummaryJson,
+      FILES.intakeLatest,
     ]) await unlinkIfExists(filePath);
     res.json({ ok: true, message: "ล้างคิวและผลลัพธ์เรียบร้อย" });
   } catch (error) {
@@ -3731,7 +4213,7 @@ app.post("/api/systems/:systemId/accounts/:id/verify-code", async (req, res) => 
     await updateAccountById(accountId, (current) => ({
       ...current,
       sessionEnc: encryptText(sessionString),
-      status: "connected",
+      status: "ready",
       pendingPhoneCodeHash: "",
       pendingCodeType: "",
       pendingTimeout: 0,
@@ -3782,7 +4264,7 @@ app.post("/api/systems/:systemId/accounts/:id/verify-password", async (req, res)
     await updateAccountById(accountId, (current) => ({
       ...current,
       sessionEnc: encryptText(sessionString),
-      status: "connected",
+      status: "ready",
       pendingPhoneCodeHash: "",
       pendingCodeType: "",
       pendingTimeout: 0,
@@ -3851,15 +4333,29 @@ app.delete("/api/systems/:systemId/accounts/:id", async (req, res) => {
 
 app.post("/api/systems/:systemId/upload", upload.single("file"), async (req, res) => {
   try {
+    const systemId = normalizeSystemId(req.params.systemId);
+    if (!systemId) throw new Error("systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E");
     if (!req.file) throw new Error("กรุณาอัปโหลดไฟล์ก่อน");
-    const displayName = decodeUploadFileName(req.file.originalname);
-    const masterFile = await persistMasterUpload(req.file.path, displayName);
-    const { meta } = await processIntakeFile(req.file.path, displayName, {
-      jobLabel: req.body?.jobLabel,
-      jobNote: req.body?.jobNote,
-      masterFile,
+    logInfo(`SYSTEM UPLOAD REQUEST systemId=${systemId}`);
+    const response = await withSystem(systemId, async () => {
+      const displayName = decodeUploadFileName(req.file.originalname);
+      const masterFile = await persistMasterUpload(req.file.path, displayName);
+      const { meta } = await processIntakeFile(req.file.path, displayName, {
+        jobLabel: req.body?.jobLabel,
+        jobNote: req.body?.jobNote,
+        masterFile,
+      });
+      const cleanReadyState = await buildCleanReadyState(systemId, meta);
+      return {
+        ok: true,
+        message: "ล้างไฟล์เรียบร้อย",
+        ...cleanReadyState,
+        summary: { ...meta, ...cleanReadyState },
+        preview: meta.preview || [],
+      };
     });
-    res.json({ ok: true, message: "ล้างไฟล์เรียบร้อย", summary: meta, preview: meta.preview || [] });
+    logInfo(`SYSTEM UPLOAD RESPONSE systemId=${response.systemId} cleanReadyPath=${response.cleanReadyPath}`);
+    res.json(response);
   } catch (error) {
     res.status(400).json({ error: error.message || "ล้างไฟล์ไม่สำเร็จ" });
   }
@@ -3867,29 +4363,48 @@ app.post("/api/systems/:systemId/upload", upload.single("file"), async (req, res
 
 app.post("/api/systems/:systemId/intake/upload", upload.single("file"), async (req, res) => {
   try {
+    const systemId = normalizeSystemId(req.params.systemId);
+    if (!systemId) throw new Error("systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E");
     if (!req.file) throw new Error("กรุณาอัปโหลดไฟล์ก่อน");
-    const displayName = decodeUploadFileName(req.file.originalname);
-    const masterFile = await persistMasterUpload(req.file.path, displayName);
-    const { meta } = await processIntakeFile(req.file.path, displayName, {
-      jobLabel: req.body?.jobLabel,
-      jobNote: req.body?.jobNote,
-      masterFile,
+    logInfo(`SYSTEM INTAKE UPLOAD REQUEST systemId=${systemId}`);
+    const response = await withSystem(systemId, async () => {
+      const displayName = decodeUploadFileName(req.file.originalname);
+      const masterFile = await persistMasterUpload(req.file.path, displayName);
+      const { meta } = await processIntakeFile(req.file.path, displayName, {
+        jobLabel: req.body?.jobLabel,
+        jobNote: req.body?.jobNote,
+        masterFile,
+      });
+      const cleanReadyState = await buildCleanReadyState(systemId, meta);
+      return {
+        ok: true,
+        message: "ล้างไฟล์เรียบร้อย",
+        ...cleanReadyState,
+        summary: { ...meta, ...cleanReadyState },
+        preview: meta.preview || [],
+      };
     });
-    res.json({ ok: true, message: "ล้างไฟล์เรียบร้อย", summary: meta, preview: meta.preview || [] });
+    logInfo(`SYSTEM INTAKE UPLOAD RESPONSE systemId=${response.systemId} cleanReadyPath=${response.cleanReadyPath}`);
+    res.json(response);
   } catch (error) {
     res.status(400).json({ error: error.message || "ล้างไฟล์ไม่สำเร็จ" });
   }
 });
 
-app.get("/api/systems/:systemId/intake/latest", async (_req, res) => {
-  const latest = await readJson(FILES.intakeLatest, null);
-  if (!latest) return res.status(404).json({ error: "ยังไม่มีผลล้างไฟล์ล่าสุด" });
-  res.json(latest);
+app.get("/api/systems/:systemId/intake/latest", async (req, res) => {
+  const systemId = normalizeSystemId(req.params.systemId);
+  if (!systemId) return res.status(400).json({ error: "systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E" });
+  await withSystem(systemId, async () => {
+    const latest = await readJson(FILES.intakeLatest, null);
+    if (!latest) return res.status(404).json({ error: "ยังไม่มีผลล้างไฟล์ล่าสุด" });
+    return res.json({ ...latest, ...(await buildCleanReadyState(systemId, latest)) });
+  });
 });
 
 app.post("/api/systems/:systemId/job/create", async (req, res) => {
   try {
-    const systemId = normalizeSystemId(req.params?.systemId || req.systemId || currentSystemId()) || DEFAULT_SYSTEM_ID;
+    const systemId = normalizeSystemId(req.params.systemId);
+    if (!systemId) throw new Error("systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E");
     const { job, settings } = await withSystem(systemId, async () => ({
       job: await createJobFromLatestClean(systemId),
       settings: await loadSettings(),
@@ -3901,6 +4416,33 @@ app.post("/api/systems/:systemId/job/create", async (req, res) => {
       ...(error?.details || {}),
     });
   }
+});
+
+app.get("/api/systems/:systemId/diagnostics/import-log", async (req, res) => {
+  const systemId = normalizeSystemId(req.params.systemId);
+  if (!systemId) return res.status(400).json({ error: "systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E" });
+  await withSystem(systemId, async () => {
+    const rows = await readImportDiagnosticLog(req.query?.limit || 50);
+    res.json({
+      ok: true,
+      systemId,
+      count: rows.length,
+      rows,
+    });
+  });
+});
+
+app.get("/api/systems/:systemId/diagnostics/import-summary", async (req, res) => {
+  const systemId = normalizeSystemId(req.params.systemId);
+  if (!systemId) return res.status(400).json({ error: "systemId ไม่ถูกต้อง ต้องเป็น A, B, C, D หรือ E" });
+  await withSystem(systemId, async () => {
+    const rows = await readImportDiagnosticLog("all");
+    res.json({
+      ok: true,
+      systemId,
+      ...buildImportDiagnosticSummary(rows),
+    });
+  });
 });
 
 app.post("/api/systems/:systemId/job/run-next", async (_req, res) => {
@@ -3924,6 +4466,14 @@ app.post("/api/systems/:systemId/job/resume-auto", async (_req, res) => {
     await resumeAutoForCurrentSystem(res);
   } catch (error) {
     res.status(409).json({ error: error.message || "ทำต่อ Auto ไม่สำเร็จ" });
+  }
+});
+
+app.post("/api/systems/:systemId/job/resume-manual", async (_req, res) => {
+  try {
+    await resumeManualForCurrentSystem(res);
+  } catch (error) {
+    res.status(409).json({ error: error.message || "ปลดพักคิวสำหรับตรวจมือไม่สำเร็จ" });
   }
 });
 
@@ -3991,6 +4541,8 @@ app.get("/download/:name", async (req, res) => {
   const allowed = new Map([
     ["telegram_matches.csv", { path: FILES.latestCsv, displayName: "telegram_matches.csv" }],
     ["telegram_matches.json", { path: FILES.latestJson, displayName: "telegram_matches.json" }],
+    ["all.csv", { path: FILES.allCsv, displayName: "all.csv" }],
+    ["all.json", { path: FILES.allJson, displayName: "all.json" }],
     ["telegram_matches_all.csv", { path: FILES.allCsv, displayName: "telegram_matches_all.csv" }],
     ["telegram_matches_all.json", { path: FILES.allJson, displayName: "telegram_matches_all.json" }],
     ["retry_rows.csv", { path: FILES.retryCsv, displayName: "retry_rows.csv" }],
@@ -4006,11 +4558,16 @@ app.get("/download/:name", async (req, res) => {
     ["processed.csv", { path: FILES.processedCsv, displayName: "processed_only.csv" }],
     ["processed.xlsx", { path: FILES.processedXlsx, displayName: "processed_only.xlsx" }],
     ["yes_only.csv", { path: FILES.yesOnlyCsv, displayName: "telegram_yes_only.csv" }],
+    ["yes.csv", { path: FILES.yesOnlyCsv, displayName: "yes.csv" }],
     ["yes_only.json", { path: FILES.yesOnlyJson, displayName: "telegram_yes_only.json" }],
     ["no_only.csv", { path: FILES.noOnlyCsv, displayName: "telegram_no_only.csv" }],
+    ["no.csv", { path: FILES.noOnlyCsv, displayName: "no.csv" }],
     ["no_only.json", { path: FILES.noOnlyJson, displayName: "telegram_no_only.json" }],
     ["retry_only.csv", { path: FILES.retryOnlyCsv, displayName: "telegram_retry_only.csv" }],
+    ["retry.csv", { path: FILES.retryOnlyCsv, displayName: "retry.csv" }],
     ["retry_only.json", { path: FILES.retryOnlyJson, displayName: "telegram_retry_only.json" }],
+    ["invalid.csv", { path: FILES.invalidOnlyCsv, displayName: "invalid.csv" }],
+    ["invalid.json", { path: FILES.invalidOnlyJson, displayName: "invalid.json" }],
     ["marketing_allowed.csv", { path: FILES.marketingAllowedCsv, displayName: "marketing_allowed_only.csv" }],
     ["marketing_allowed.json", { path: FILES.marketingAllowedJson, displayName: "marketing_allowed_only.json" }],
     ["winback.csv", { path: FILES.winbackCsv, displayName: "winback_only.csv" }],
@@ -4057,7 +4614,7 @@ async function autoTick(systemId = DEFAULT_SYSTEM_ID) {
   const settings = await loadSettings();
   const job = await pauseHighRetryForManual(await markFloodStateStaleIfNeeded(await getCurrentJob()), "auto_loop");
   if (!job || !settings.autoRun) return;
-  if (job.status === "completed" || job.status === "paused" || job.status === "paused_flood_stale" || job.status === "paused_too_many_retry") return;
+  if (job.status === "completed" || job.status === "paused" || job.status === "paused_flood_stale" || job.status === "paused_too_many_retry" || displayQueueStatus(job.status) === "AUTH_REQUIRED") return;
 
   const now = Date.now();
   const nextRunTime = job.nextRunAt ? new Date(job.nextRunAt).getTime() : 0;
@@ -4069,6 +4626,7 @@ async function autoTick(systemId = DEFAULT_SYSTEM_ID) {
   try {
     const nextJobBefore = await getCurrentJob();
     if (!nextJobBefore) return;
+    await assertRunNextAuthReady(nextJobBefore);
     const normalizedJob = {
       ...nextJobBefore,
       status: nextJobBefore.status === "waiting_flood" || nextJobBefore.status === "waiting_retry_cooldown" || nextJobBefore.status === "paused_retry_cooldown" ? "ready" : nextJobBefore.status,
@@ -4080,14 +4638,12 @@ async function autoTick(systemId = DEFAULT_SYSTEM_ID) {
   } catch (error) {
     const current = await getCurrentJob();
     if (current && (error?.isAccountAuthError || isAuthSessionError(error))) {
-      await saveCurrentJob({
-        ...current,
-        autoStatus: "OFF",
-        status: "paused",
-        updatedAt: nowIso(),
-      });
-      pushRecoveryNotice('warning', 'AUTO_AUTH_INVALID', 'ต้องล็อกอินบัญชีใหม่', extractTelegramError(error) || "session ใช้งานไม่ได้ กรุณาล็อกอินใหม่");
-      await appendRunLog({ type: "auto_auth_invalid", jobId: current.id, message: extractTelegramError(error) });
+      const message = error?.code === "AUTH_REQUIRED" || error?.type === "AUTH_REQUIRED"
+        ? (error.message || authRequiredMessage(error))
+        : authRequiredMessage(error);
+      await markJobAuthRequired(current, message);
+      pushRecoveryNotice('warning', 'AUTO_AUTH_INVALID', 'ต้องล็อกอินบัญชีใหม่', message);
+      await appendRunLog({ type: "auto_auth_invalid", jobId: current.id, message });
     } else if (current && parseFloodSeconds(error?.message)) {
       await handleFloodWait(current, error);
     } else {
